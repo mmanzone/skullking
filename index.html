@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skull King: Soren's Edition</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💀</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -120,7 +121,7 @@
             font-size: 1.5rem;
             cursor: pointer;
             transition: color 0.2s;
-            min-width: 25px; /* align with text */
+            min-width: 25px; 
         }
         .dealer-radio:checked + .dealer-label {
             color: var(--gold);
@@ -154,7 +155,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
         
-        /* Updated Add Button to match Input alignment */
         .btn-add-row {
             display: flex;
             align-items: center;
@@ -390,15 +390,15 @@
 
         .cell-score { font-size: 1.3rem; font-family: 'Pirata One'; font-weight: bold; display: block; margin-top: 4px;}
         
-        /* VISUAL BOX STYLES */
+        /* VISUAL BOX STYLES (Update v3.9) */
         .visual-score {
             display: flex;
             flex-wrap: wrap;
-            gap: 2px;
+            gap: 4px; /* Increased gap */
             justify-content: center;
         }
         .box {
-            width: 10px; height: 10px;
+            width: 20px; height: 20px; /* Doubled Size */
             border: 1px solid var(--gold);
             display: inline-block;
         }
@@ -407,22 +407,22 @@
         .box.over { 
             position: relative;
         }
-        /* Cross for Overtrick */
+        /* Plus for Overtrick */
         .box.over::after {
-            content: '×';
+            content: '+';
             color: var(--gold);
-            font-size: 12px;
-            line-height: 8px;
+            font-size: 20px;
+            line-height: 18px;
             position: absolute;
             top: 0; left: 0; width: 100%; text-align: center;
+            font-weight: bold;
         }
-        .zero-badge {
+        .zero-dash {
             display: inline-block;
-            width: 16px; height: 16px;
-            border: 1px solid var(--gold);
-            border-radius: 50%;
-            font-size: 10px; line-height: 14px;
-            color: var(--gold);
+            font-size: 24px; 
+            line-height: 20px;
+            color: #888;
+            font-family: 'Pirata One';
         }
         
         .active-round { background-color: rgba(212, 175, 55, 0.15); }
@@ -518,15 +518,13 @@
         
         <div class="input-list" style="margin-top: 10px;">
             <div class="btn-add-row" onclick="addPlayerInput()">
-                <div style="width: 25px;"></div> <div class="btn-add-placeholder">+ <span id="txt-add">Add Pirate</span></div>
+                <div style="width: 25px;"></div> 
+                <div class="btn-add-placeholder">+ <span id="txt-add">Add Pirate</span></div>
             </div>
         </div>
         
-        <div style="margin-top: 20px; text-align: left; background: #222; padding: 10px; border-radius: 4px; border: 1px solid #444;">
-            <label style="display:flex; align-items:center; gap: 10px; cursor: pointer;">
-                <input type="checkbox" id="use-soren-rule" checked style="width: auto;">
-                <span id="txt-rule" style="color: var(--gold)">Use Soren's Scoring Rule</span>
-            </label>
+        <div style="display:none;">
+            <input type="checkbox" id="use-soren-rule" checked>
         </div>
 
         <button class="btn-main" onclick="startGame()" id="btn-start">Set Sail!</button>
@@ -581,7 +579,7 @@
 
     <script>
         /* --- CONFIG --- */
-        const STORAGE_KEY = 'skullKing_Soren_v38';
+        const STORAGE_KEY = 'skullKing_Soren_v39';
         const HISTORY_KEY = 'skullKing_Names';
         
         const SOUNDS = {
@@ -725,9 +723,6 @@
             if(gameState.started) {
                 renderWizard();
                 renderTableStructure(); 
-                gameState.players.forEach((p, idx) => {
-                   p.scores.forEach((s, roundIdx) => updateScoreCell(idx, roundIdx+1, s));
-                });
                 updateTotals();
             }
 
@@ -768,9 +763,6 @@
                         document.getElementById('input-zone').style.display = 'block';
                         document.getElementById('scoreboard-container').classList.remove('hidden');
                         renderTableStructure();
-                        gameState.players.forEach((p, idx) => {
-                           p.scores.forEach((s, roundIdx) => updateScoreCell(idx, roundIdx+1, s));
-                        });
                         updateTotals();
                         renderWizard();
                         
@@ -869,7 +861,7 @@
                     scores: [],
                     totalScore: 0
                 }));
-                gameState.useSorenRule = document.getElementById('use-soren-rule').checked;
+                gameState.useSorenRule = true; // Implied check
                 gameState.started = true;
                 gameState.round = 1;
                 gameState.phase = 'betting';
@@ -962,7 +954,7 @@
             } else {
                 wizInstr.innerText = `${t('resInstr')} ${player.name}`;
                 betControls.classList.add('hidden');
-                scoreActions.classList.remove('hidden'); // Buttons always visible in scoring
+                scoreActions.classList.remove('hidden'); 
                 
                 if (gameState.tempWonValue !== null && gameState.tempWonValue > 0) {
                     bonusSection.classList.remove('hidden');
@@ -1078,6 +1070,7 @@
                     gameState.round++;
                     gameState.phase = 'betting';
                     renderTableStructure(); 
+                    // BUG FIX: Re-populate loop handled in renderTableStructure
                     addTableRow(gameState.round);
                 } else {
                     playSound('score');
@@ -1172,9 +1165,16 @@
             tfoot.innerHTML = htmlFoot;
 
             tbody.innerHTML = '';
+            // Rebuild rows AND populate data
             for(let r=1; r<=gameState.round; r++) {
                 addTableRow(r);
             }
+            // Repopulate Bug Fix
+            gameState.players.forEach((p, idx) => {
+                p.scores.forEach((s, rIdx) => {
+                    if(rIdx < gameState.round) updateScoreCell(idx, rIdx+1, s);
+                });
+            });
         }
 
         function addTableRow(roundNum) {
@@ -1200,38 +1200,28 @@
 
         /* VISUAL GENERATION */
         function generateVisuals(bet, won) {
-            // Bet 0 Case
             if (bet === 0) {
-                let html = '<div class="visual-score">';
-                html += '<div class="zero-badge">0</div>';
-                
-                // If they won tricks on a 0 bet (Overtricks)
+                let html = '<div class="visual-score"><span class="zero-dash">-</span>';
                 if (won > 0) {
-                    for(let i=0; i<won; i++) {
-                        html += '<div class="box over"></div>';
-                    }
+                    for(let i=0; i<won; i++) html += '<div class="box over"></div>';
                 }
                 html += '</div>';
                 return html;
             }
 
-            // Normal Case
             let html = '<div class="visual-score">';
-            // Determine max boxes needed
             const count = Math.max(bet, (won || 0));
             
             for(let i=0; i<count; i++) {
                 if (won === undefined || won === null) {
-                    // Betting Phase: Just empty bet boxes
                     html += '<div class="box empty"></div>';
                 } else {
-                    // Scoring Phase Logic
                     if (i < bet && i < won) {
-                        html += '<div class="box filled"></div>'; // Match
+                        html += '<div class="box filled"></div>'; 
                     } else if (i < bet && i >= won) {
-                        html += '<div class="box empty"></div>'; // Undertrick (Missing)
+                        html += '<div class="box empty"></div>'; 
                     } else if (i >= bet && i < won) {
-                        html += '<div class="box over"></div>'; // Overtrick
+                        html += '<div class="box over"></div>'; 
                     }
                 }
             }
@@ -1243,7 +1233,6 @@
             const cell = document.getElementById(`cell-r${rIdx}-p${pIdx}`);
             if(!cell) return;
             
-            // Generate Visuals
             let visualHTML = '';
             if (data.bet !== undefined && data.bet !== null) {
                 visualHTML = generateVisuals(data.bet, data.won);
