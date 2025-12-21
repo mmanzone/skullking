@@ -333,7 +333,7 @@
 </head>
 <body>
 
-    <audio id="pirate-sound" src="/argh.mp3" preload="auto"></audio>
+    <audio id="pirate-sound" src="argh.mp3" preload="auto"></audio>
 
     <header>
         <h1><i class="fas fa-skull-crossbones"></i> Skull King</h1>
@@ -416,14 +416,37 @@
 
     <script>
         /* --- CONFIG --- */
-        const STORAGE_KEY = 'skullKingSoren_v3';
+        const STORAGE_KEY = 'skullKingSoren_v32';
         
         /* --- SOUND --- */
+        const FALLBACK_SOUND = "https://archive.org/download/PirateArrr/Pirate%20Arrr.mp3";
+        
         function playPirateSound() {
             const audio = document.getElementById('pirate-sound');
+            
+            // Setup error handler just in case local file is missing
+            audio.onerror = function() {
+                console.log("Local audio failed, switching to fallback");
+                // Avoid infinite loop if fallback also fails
+                if (audio.src !== FALLBACK_SOUND) {
+                    audio.src = FALLBACK_SOUND;
+                    audio.play();
+                }
+            };
+
             audio.currentTime = 0;
-            audio.volume = 0.5;
-            audio.play().catch(e => console.log("Audio requires interaction first or file missing"));
+            audio.volume = 1.0; 
+            
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("Audio play blocked or file missing. Trying fallback immediately.");
+                    if (audio.src.indexOf("http") === -1) {
+                         audio.src = FALLBACK_SOUND;
+                         audio.play();
+                    }
+                });
+            }
         }
 
         /* --- LOCALIZATION --- */
@@ -741,7 +764,6 @@
             // Validation 2: Zero Tricks = Zero Bonus
             if (tempWonValue === 0 && gameState.tempBonus !== 0) {
                 alert(t('noBonusError'));
-                // Reset bonus visual for them to fix or confirm
                 gameState.tempBonus = 0;
                 document.getElementById('bonus-display').innerText = "0";
                 return;
