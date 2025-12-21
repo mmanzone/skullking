@@ -7,7 +7,6 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💀</text></svg>">
     
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -143,18 +142,30 @@
         td:first-child, th:first-child, tfoot td:first-child { position: sticky; left: 0; background: #111; z-index: 3; border-right: 1px solid #333; width: 40px; }
         th:first-child { z-index: 4; }
         tfoot { position: sticky; bottom: 0; background: #000; z-index: 5; border-top: 2px solid var(--gold); }
-        tfoot td { color: var(--gold); font-family: 'Pirata One'; font-size: 1.4rem; background: #000; }
+        tfoot td { color: var(--gold); font-family: 'Pirata One'; font-size: 1.4rem; background: #000; font-weight: bold; }
         td { padding: 8px 4px; border-bottom: 1px solid #333; border-right: 1px solid #333; height: 55px; }
         .cell-score { font-size: 1.3rem; font-family: 'Pirata One'; font-weight: bold; display: block; margin-top: 4px;}
         
-        /* Visuals (Updated 18px) */
+        /* Visuals (Circles v4.3) */
         .visual-score { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
-        .box { width: 18px; height: 18px; border: 1px solid var(--gold); display: inline-block; }
+        .box { 
+            width: 18px; height: 18px; 
+            border: 1px solid var(--gold); 
+            display: inline-block;
+            border-radius: 50%; /* CIRCLE */
+        }
         .box.filled { background-color: var(--gold); }
         .box.empty { background-color: transparent; }
         .box.over { position: relative; }
-        .box.over::after { content: '+'; color: var(--gold); font-size: 18px; line-height: 16px; position: absolute; top: 0; left: 0; width: 100%; text-align: center; font-weight: bold; }
+        /* + Sign for Overtrick */
+        .box.over::after { 
+            content: '+'; color: var(--gold); 
+            font-size: 18px; line-height: 16px; 
+            position: absolute; top: 0; left: 0; width: 100%; text-align: center; font-weight: bold; 
+        }
+        /* New Dash Style */
         .zero-dash { display: inline-block; font-size: 20px; line-height: 18px; color: #888; font-family: 'Pirata One'; }
+        
         .active-round { background-color: rgba(212, 175, 55, 0.15); }
 
         /* Modals */
@@ -172,7 +183,6 @@
         .rule-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; }
         .hidden { display: none !important; }
         
-        /* New Game Button overlay in header/footer area */
         .new-game-banner { text-align: center; padding: 10px; background: #222; border-bottom: 1px solid var(--gold); }
 
     </style>
@@ -285,7 +295,7 @@
     <datalist id="player-history"></datalist>
 
     <script>
-        const STORAGE_KEY = 'skullKing_Soren_v42';
+        const STORAGE_KEY = 'skullKing_Soren_v43';
         const HISTORY_KEY = 'skullKing_Names';
         
         const SOUNDS = {
@@ -324,7 +334,7 @@
             });
         }
 
-        let curLang = 'fr'; // Default French
+        let curLang = 'fr'; 
         const I18N = {
             en: {
                 add: "Add Pirate",
@@ -498,9 +508,10 @@
             updateUIText();
         }
 
+        // FORCE RECALCULATION
         function recalculateAllTotals() {
             gameState.players.forEach(p => {
-                p.totalScore = p.scores.reduce((sum, s) => sum + (s.points || 0), 0);
+                p.totalScore = p.scores.reduce((sum, s) => sum + (Number(s.points) || 0), 0);
             });
             updateTotals();
         }
@@ -614,7 +625,6 @@
 
             if(gameState.activePlayerIdx >= gameState.players.length) {
                 wizPlayer.innerText = t('review');
-                // Translation Update
                 wizInstr.innerText = (gameState.phase === 'betting') ? t('checkBets') : t('checkScores');
                 wizRound.innerText = "";
                 
@@ -758,9 +768,7 @@
                 roundData.points = calculateStandardScore(gameState.round, roundData.bet, roundData.won, roundData.bonus);
             }
 
-            // Recalculate totals immediately
             recalculateAllTotals();
-            
             updateScoreCell(gameState.activePlayerIdx, gameState.round, roundData);
             
             gameState.tempWonValue = null;
@@ -959,7 +967,6 @@
         function generateVisuals(bet, won) {
             if (bet === 0) {
                 let html = '<div class="visual-score">';
-                // Visual Update: Hide dash if won > 0
                 if (won > 0) {
                     for(let i=0; i<won; i++) html += '<div class="box over"></div>';
                 } else {
