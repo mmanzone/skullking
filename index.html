@@ -294,3 +294,598 @@
         .modal-content {
             background: var(--bg-color);
             border: 2px solid var(--gold);
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            text-align: left;
+        }
+
+        .modal h2 { margin-top: 0; color: var(--gold); font-family: 'Pirata One'; text-align: center;}
+        
+        .rule-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .hidden { display: none !important; }
+
+    </style>
+</head>
+<body>
+
+    <audio id="pirate-sound" src="https://assets.mixkit.co/active_storage/sfx/2034/2034-preview.mp3" preload="auto"></audio>
+
+    <header>
+        <h1><i class="fas fa-skull-crossbones"></i> Skull King</h1>
+        <div class="header-controls">
+            <button class="icon-btn" onclick="showRules()"><i class="fas fa-scroll"></i></button>
+            <button class="icon-btn" onclick="resetGame()"><i class="fas fa-trash-alt"></i></button>
+            <button class="icon-btn" onclick="toggleLanguage()" id="lang-btn">🇫🇷</button>
+        </div>
+    </header>
+
+    <div id="rules-modal" class="modal" onclick="closeRules(event)">
+        <div class="modal-content">
+            <h2 id="modal-head">Bonus & Rules</h2>
+            <div id="rules-list">
+                </div>
+            <button class="btn-main" onclick="document.getElementById('rules-modal').style.display='none'" style="margin-top:20px; padding:10px;">Close</button>
+        </div>
+    </div>
+
+    <div id="setup-screen">
+        <h2 id="setup-title" style="color:var(--gold); font-family:'Pirata One'; font-size:2rem;">Ship Manifest</h2>
+        
+        <div class="input-list" id="player-inputs">
+            </div>
+        
+        <button class="btn-add" onclick="addPlayerInput()">+ <span id="txt-add">Add Pirate</span></button>
+        
+        <div style="margin-top: 20px; text-align: left; background: #222; padding: 10px; border-radius: 4px; border: 1px solid #444;">
+            <label style="display:flex; align-items:center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="use-soren-rule" checked style="width: auto;">
+                <span id="txt-rule" style="color: var(--gold)">Use Soren's Scoring Rule</span>
+            </label>
+            <small style="color:#aaa; display:block; margin-top:5px; line-height:1.4;" id="txt-rule-desc">
+                Success: Round x 10. <br>Off by 1: Half points. <br>Off by 2+: Zero.
+            </small>
+        </div>
+
+        <button class="btn-main" onclick="startGame()" id="btn-start">Set Sail!</button>
+        <div id="resume-msg" class="hidden" style="margin-top:10px; color: var(--gold)">Previous game found!</div>
+    </div>
+
+    <div id="input-zone">
+        <div class="wizard-header">
+            <div>
+                <div class="player-turn" id="wiz-player">Player</div>
+                <div class="instruction" id="wiz-instruction">Enter Bet</div>
+            </div>
+            <div style="font-size: 2rem; font-family:'Pirata One'; color: #555;" id="wiz-round">R1</div>
+        </div>
+
+        <div id="number-grid" class="num-grid"></div>
+
+        <div id="bonus-section" class="hidden">
+            <div class="instruction" style="text-align:center;" id="txt-bonus">Bonus Points</div>
+            <div class="bonus-controls">
+                <button class="bonus-btn" onclick="adjustBonus(-10)">-</button>
+                <span id="bonus-display">0</span>
+                <button class="bonus-btn" onclick="adjustBonus(10)">+</button>
+            </div>
+            
+            <div class="action-row">
+                <button class="btn-revert" onclick="revertAction()"><i class="fas fa-undo"></i></button>
+                <button class="btn-confirm" onclick="confirmResult()" id="btn-save">Save Results</button>
+            </div>
+        </div>
+        
+        <div id="bet-controls" class="action-row hidden">
+                <button class="btn-revert" onclick="revertAction()" style="width: 100%"><i class="fas fa-undo"></i> <span id="txt-undo">Undo</span></button>
+        </div>
+    </div>
+
+    <div id="scoreboard-container" class="hidden">
+        <table id="score-table">
+            <thead id="table-head"></thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+
+
+    <script>
+        /* --- CONFIG --- */
+        const STORAGE_KEY = 'skullKingSoren_v21';
+        
+        /* --- SOUND --- */
+        function playPirateSound() {
+            const audio = document.getElementById('pirate-sound');
+            // Reset to start if already playing or played
+            audio.currentTime = 0;
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log("Audio requires interaction first"));
+        }
+
+        /* --- LOCALIZATION --- */
+        let curLang = 'en';
+        const I18N = {
+            en: {
+                add: "Add Pirate",
+                start: "Set Sail!",
+                rule: "Use Soren's Scoring Rule",
+                ruleDesc: "Success: Round x 10. <br>Off by 1: Half pts. <br>Off by 2+: Zero.",
+                betInstr: "Place bet for",
+                resInstr: "Tricks won by",
+                bonus: "Bonus Points",
+                save: "Save & Next",
+                undo: "Undo",
+                round: "R",
+                total: "Total",
+                manifest: "Ship Manifest",
+                resetWarn: "Are you sure you want to delete this game and start over?",
+                modalHead: "Bonus & Rules",
+                betPrefix: "Bet:",
+                impossible: "Impossible! Tricks won cannot exceed round number.",
+                rules: [
+                    ["Suits", "Yellow, Green, Purple (Low)"],
+                    ["Jolly Roger", "Black (High Suit)"],
+                    ["Pirate", "Beats all Suits & Jolly Roger"],
+                    ["Escape (White Flag)", "Loses (unless all play Escape)"],
+                    ["Tigress", "Pirate OR Escape"],
+                    ["Skull King", "Beats all Pirates"],
+                    ["Mermaid", "Beats Skull King, loses to Pirates"],
+                    ["---", "---"],
+                    ["Capturing 10, 11, 12, 13", "+10/20 Bonus"],
+                    ["Capturing Mermaid", "+20 Bonus"],
+                    ["Capturing Pirate", "+30 Bonus"],
+                    ["Skull King captures Pirate", "+30 Bonus each"]
+                ]
+            },
+            fr: {
+                add: "Ajouter un Pirate",
+                start: "Hisser les voiles !",
+                rule: "Utiliser la règle de Soren",
+                ruleDesc: "Succès : Manche x 10. <br>Écart de 1 : Moitié pts. <br>Écart 2+ : Zéro.",
+                betInstr: "Mise pour",
+                resInstr: "Plis faits par",
+                bonus: "Points Bonus",
+                save: "Sauver & Suivant",
+                undo: "Retour",
+                round: "M",
+                total: "Total",
+                manifest: "Manifeste",
+                resetWarn: "Voulez-vous vraiment effacer cette partie et recommencer ?",
+                modalHead: "Règles & Bonus",
+                betPrefix: "Pari:",
+                impossible: "Impossible ! Le total des plis dépasse la manche.",
+                rules: [
+                    ["Couleurs", "Jaune, Vert, Violet (Bas)"],
+                    ["Jolly Roger", "Noir (Atout)"],
+                    ["Pirate", "Bat toutes couleurs & Jolly Roger"],
+                    ["Fuite (Drapeau Blanc)", "Perd (sauf si tout le monde fuit)"],
+                    ["Tigresse", "Pirate OU Fuite"],
+                    ["Skull King", "Bat tous les Pirates"],
+                    ["Sirène", "Bat Skull King, perd contre Pirates"],
+                    ["---", "---"],
+                    ["Capturer le 14", "+10/20 Bonus"],
+                    ["Capturer Sirène", "+20 Bonus"],
+                    ["Capturer Pirate", "+30 Bonus"],
+                    ["Skull King capture Pirate", "+30 Bonus chaque"]
+                ]
+            }
+        };
+
+        function t(key) { return I18N[curLang][key]; }
+
+        function toggleLanguage() {
+            curLang = curLang === 'en' ? 'fr' : 'en';
+            document.getElementById('lang-btn').innerText = curLang === 'en' ? '🇫🇷' : '🇬🇧';
+            updateUIText();
+        }
+
+        function updateUIText() {
+            document.getElementById('txt-add').innerText = t('add');
+            document.getElementById('btn-start').innerText = t('start');
+            document.getElementById('txt-rule').innerText = t('rule');
+            document.getElementById('txt-rule-desc').innerHTML = t('ruleDesc');
+            document.getElementById('txt-bonus').innerText = t('bonus');
+            document.getElementById('btn-save').innerText = t('save');
+            document.getElementById('txt-undo').innerText = t('undo');
+            document.getElementById('setup-title').innerText = t('manifest');
+            document.getElementById('modal-head').innerText = t('modalHead');
+            
+            // Re-render table to update Bet Prefixes
+            if(gameState.started) {
+                renderWizard();
+                gameState.players.forEach((p, idx) => {
+                   p.scores.forEach((s, roundIdx) => updateScoreCell(idx, roundIdx+1, s));
+                });
+            }
+
+            // Update Rules Modal Content
+            const rulesDiv = document.getElementById('rules-list');
+            rulesDiv.innerHTML = '';
+            I18N[curLang].rules.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'rule-item';
+                div.innerHTML = `<span style="color:#aaa">${r[0]}</span><span style="color:var(--gold)">${r[1]}</span>`;
+                rulesDiv.appendChild(div);
+            });
+        }
+
+        /* --- STATE --- */
+        let gameState = {
+            started: false,
+            players: [], 
+            round: 1,
+            maxRounds: 10,
+            phase: 'betting', 
+            activePlayerIdx: 0,
+            useSorenRule: true,
+            tempBonus: 0
+        };
+
+        /* --- INIT & SAVE --- */
+        function init() {
+            // Check local storage
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    gameState = JSON.parse(saved);
+                    // Restore UI based on state
+                    if (gameState.started) {
+                        document.getElementById('setup-screen').classList.add('hidden');
+                        document.getElementById('input-zone').style.display = 'block';
+                        document.getElementById('scoreboard-container').classList.remove('hidden');
+                        renderTableStructure();
+                        // Re-fill table data
+                        gameState.players.forEach((p, idx) => {
+                           p.scores.forEach((s, roundIdx) => updateScoreCell(idx, roundIdx+1, s));
+                        });
+                        renderWizard();
+                    } else {
+                        // Pre-fill names
+                        const container = document.getElementById('player-inputs');
+                        container.innerHTML = '';
+                        gameState.players.forEach(p => addPlayerInput(p.name));
+                        document.getElementById('resume-msg').classList.remove('hidden');
+                    }
+                } catch(e) {
+                    console.error("Save file corrupt", e);
+                    localStorage.removeItem(STORAGE_KEY);
+                    setupNewGame();
+                }
+            } else {
+                setupNewGame();
+            }
+            // Init Rules text
+            updateUIText();
+        }
+
+        function setupNewGame() {
+            const container = document.getElementById('player-inputs');
+            container.innerHTML = '';
+            for(let i=0; i<4; i++) addPlayerInput();
+        }
+
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+        }
+
+        function resetGame() {
+            if(confirm(t('resetWarn'))) {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
+            }
+        }
+
+        /* --- LOGIC --- */
+        function addPlayerInput(val = '') {
+            const div = document.createElement('div');
+            const num = document.getElementById('player-inputs').children.length + 1;
+            div.innerHTML = `<input type="text" class="p-name" placeholder="Pirate ${num}" value="${val}">`;
+            document.getElementById('player-inputs').appendChild(div);
+        }
+
+        function startGame() {
+            const inputs = document.querySelectorAll('.p-name');
+            const names = Array.from(inputs).map(i => i.value.trim()).filter(n => n !== "");
+            
+            if(names.length < 1) return alert("Need pirates!");
+
+            // If starting fresh (not resuming)
+            if (!gameState.started || gameState.players.length === 0) {
+                 gameState.players = names.map(n => ({
+                    name: n,
+                    scores: [],
+                    totalScore: 0
+                }));
+                gameState.useSorenRule = document.getElementById('use-soren-rule').checked;
+                gameState.started = true;
+                gameState.round = 1;
+                gameState.phase = 'betting';
+                gameState.activePlayerIdx = 0;
+            }
+
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('input-zone').style.display = 'block';
+            document.getElementById('scoreboard-container').classList.remove('hidden');
+
+            renderTableStructure();
+            renderWizard();
+            saveState();
+            playPirateSound(); // Game Start Sound
+        }
+
+        function renderWizard() {
+            const player = gameState.players[gameState.activePlayerIdx];
+            const wizPlayer = document.getElementById('wiz-player');
+            const wizInstr = document.getElementById('wiz-instruction');
+            const wizRound = document.getElementById('wiz-round');
+            const numGrid = document.getElementById('number-grid');
+            const bonusSection = document.getElementById('bonus-section');
+            const betControls = document.getElementById('bet-controls');
+
+            wizPlayer.innerText = player.name;
+            wizRound.innerText = `${t('round')}${gameState.round}`;
+
+            numGrid.innerHTML = '';
+
+            // Generate Buttons
+            for(let i=0; i <= gameState.round; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'num-btn';
+                btn.innerText = i;
+                btn.onclick = () => handleNumberClick(i);
+                numGrid.appendChild(btn);
+            }
+
+            if (gameState.phase === 'betting') {
+                wizInstr.innerText = `${t('betInstr')} ${t('round')} ${gameState.round}`;
+                bonusSection.classList.add('hidden');
+                numGrid.classList.remove('hidden');
+                
+                if(gameState.activePlayerIdx > 0) {
+                    betControls.classList.remove('hidden');
+                } else {
+                    betControls.classList.add('hidden');
+                }
+            } else {
+                // Scoring Phase
+                wizInstr.innerText = `${t('resInstr')} ${player.name}`;
+                betControls.classList.add('hidden');
+                bonusSection.classList.remove('hidden'); 
+                numGrid.classList.remove('hidden');
+                
+                gameState.tempBonus = 0;
+                document.getElementById('bonus-display').innerText = "0";
+            }
+            
+            highlightActiveRow();
+        }
+
+        let tempWonValue = null;
+
+        function handleNumberClick(val) {
+            const player = gameState.players[gameState.activePlayerIdx];
+
+            if (gameState.phase === 'betting') {
+                // Save Bet
+                if(!player.scores[gameState.round-1]) player.scores[gameState.round-1] = {};
+                player.scores[gameState.round-1].bet = val;
+                
+                updateScoreCell(gameState.activePlayerIdx, gameState.round, player.scores[gameState.round-1]);
+                saveState();
+                nextStep();
+            } else {
+                // Scoring Phase: Select won tricks
+                tempWonValue = val;
+                
+                const btns = document.querySelectorAll('.num-btn');
+                btns.forEach(b => {
+                    if (parseInt(b.innerText) === val) {
+                        b.classList.add('selected');
+                    } else {
+                        b.classList.remove('selected');
+                    }
+                });
+            }
+        }
+
+        function adjustBonus(amount) {
+            gameState.tempBonus += amount;
+            document.getElementById('bonus-display').innerText = gameState.tempBonus;
+        }
+
+        function confirmResult() {
+            if (tempWonValue === null) return alert("Select tricks won first");
+            
+            // VALIDATION: Check if current tricks entered exceed round limit
+            // We sum up the tricks already won by previous players in this round, plus the one currently being entered.
+            let tricksSoFar = 0;
+            gameState.players.forEach((p, idx) => {
+                // If it's a previous player in this round, they have a 'won' value
+                if (idx < gameState.activePlayerIdx && p.scores[gameState.round-1]) {
+                    tricksSoFar += (p.scores[gameState.round-1].won || 0);
+                }
+            });
+            // Add current entry
+            tricksSoFar += tempWonValue;
+
+            // If total exceeds round number, block
+            if (tricksSoFar > gameState.round) {
+                alert(t('impossible') + ` (Current: ${tricksSoFar} vs Round: ${gameState.round})`);
+                return;
+            }
+
+            const player = gameState.players[gameState.activePlayerIdx];
+            const roundData = player.scores[gameState.round-1];
+            
+            roundData.won = tempWonValue;
+            roundData.bonus = gameState.tempBonus;
+            
+            if (gameState.useSorenRule) {
+                roundData.points = calculateSorenScore(gameState.round, roundData.bet, roundData.won, roundData.bonus);
+            } else {
+                roundData.points = calculateStandardScore(gameState.round, roundData.bet, roundData.won, roundData.bonus);
+            }
+
+            player.totalScore += roundData.points;
+            
+            updateScoreCell(gameState.activePlayerIdx, gameState.round, roundData);
+            saveState();
+            
+            tempWonValue = null;
+            nextStep();
+        }
+
+        function nextStep() {
+            gameState.activePlayerIdx++;
+
+            // Cycle Check
+            if(gameState.activePlayerIdx >= gameState.players.length) {
+                gameState.activePlayerIdx = 0;
+                
+                if (gameState.phase === 'betting') {
+                    // Betting Finished -> Scoring
+                    gameState.phase = 'scoring';
+                    playPirateSound(); // All bets in
+                } else {
+                    // Scoring Finished -> Next Round
+                    if (gameState.round < gameState.maxRounds) {
+                        playPirateSound(); // Round finished
+                        gameState.round++;
+                        gameState.phase = 'betting';
+                        addTableRow(gameState.round);
+                    } else {
+                        playPirateSound(); // Game Over
+                        alert("Game Over! Check totals.");
+                        document.getElementById('input-zone').style.display = 'none';
+                    }
+                }
+            }
+            saveState();
+            renderWizard();
+        }
+
+        function revertAction() {
+            if (gameState.activePlayerIdx > 0) {
+                gameState.activePlayerIdx--;
+                renderWizard();
+            }
+        }
+
+        /* --- CALC --- */
+        function calculateSorenScore(round, bet, won, bonus) {
+            const potential = round * 10;
+            const diff = Math.abs(bet - won);
+            let baseScore = 0;
+
+            if (round === 1) {
+                // EXCEPTION FOR ROUND 1:
+                // Success = 10pts. Fail = 0pts.
+                if (diff === 0) baseScore = potential;
+                else baseScore = 0;
+            } else {
+                // STANDARD SOREN (Rounds 2-10):
+                if (diff === 0) baseScore = potential;
+                else if (diff === 1) baseScore = potential / 2;
+                else baseScore = 0;
+            }
+            
+            return baseScore + bonus;
+        }
+
+        function calculateStandardScore(round, bet, won, bonus) {
+            if (bet === 0) {
+                if (won === 0) return (round * 10) + bonus;
+                return (round * -10) + bonus;
+            }
+            if (bet === won) return (bet * 20) + bonus;
+            return (Math.abs(bet - won) * -10) + bonus; 
+        }
+
+        /* --- TABLE --- */
+        function renderTableStructure() {
+            const thead = document.getElementById('table-head');
+            const tbody = document.getElementById('table-body');
+            
+            let htmlHead = `<tr><th>${t('round')}</th>`;
+            gameState.players.forEach(p => {
+                htmlHead += `<th>${p.name.substring(0,6)}..</th>`;
+            });
+            htmlHead += `</tr>`;
+            thead.innerHTML = htmlHead;
+
+            tbody.innerHTML = '';
+            // Render up to current round
+            for(let r=1; r<=gameState.round; r++) {
+                addTableRow(r);
+            }
+        }
+
+        function addTableRow(roundNum) {
+            const tbody = document.getElementById('table-body');
+            // Check if exists
+            if(document.getElementById(`row-r${roundNum}`)) return;
+
+            const tr = document.createElement('tr');
+            tr.id = `row-r${roundNum}`;
+            
+            let html = `<td>${roundNum}</td>`;
+            gameState.players.forEach((p, idx) => {
+                html += `<td id="cell-r${roundNum}-p${idx}">
+                    <span class="cell-bet">-</span>
+                    <span class="cell-score"></span>
+                </td>`;
+            });
+            tr.innerHTML = html;
+            tbody.appendChild(tr);
+            
+            const container = document.getElementById('scoreboard-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateScoreCell(pIdx, rIdx, data) {
+            const cell = document.getElementById(`cell-r${rIdx}-p${pIdx}`);
+            if(!cell) return;
+            
+            const betDisplay = (data.bet !== undefined && data.bet !== null) ? `${t('betPrefix')} ${data.bet}` : '-';
+            const scoreDisplay = (data.points !== undefined) ? data.points : '';
+            
+            // Text color for score
+            let color = '#fff';
+            if(data.points > 0) color = 'var(--gold)';
+            if(data.points < 0) color = '#888';
+
+            cell.innerHTML = `
+                <span class="cell-bet">${betDisplay}</span>
+                <span class="cell-score" style="color:${color}">${scoreDisplay}</span>
+            `;
+        }
+
+        function highlightActiveRow() {
+            document.querySelectorAll('tr').forEach(tr => tr.classList.remove('active-round'));
+            const row = document.getElementById(`row-r${gameState.round}`);
+            if(row) row.classList.add('active-round');
+        }
+
+        /* --- MODAL --- */
+        function showRules() {
+            document.getElementById('rules-modal').style.display = 'flex';
+        }
+        function closeRules(e) {
+            if(e.target.id === 'rules-modal') e.target.style.display = 'none';
+        }
+
+        // Boot
+        window.onload = init;
+
+    </script>
+</body>
+</html>
