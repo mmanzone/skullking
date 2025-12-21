@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skull King: Soren's Edition</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
@@ -18,6 +18,8 @@
             --text: #f0f0f0;
             --btn-bg: #3e3e42;
             --dark-overlay: rgba(0,0,0,0.95);
+            --toast-bg-err: #c0392b;
+            --toast-bg-info: #2980b9;
         }
 
         * { box-sizing: border-box; touch-action: manipulation; }
@@ -32,6 +34,23 @@
             height: 100vh;
             overflow: hidden;
         }
+
+        /* --- Notification Bar (Inline Errors) --- */
+        #notification-bar {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            z-index: 9999;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease-in-out;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            font-family: 'Roboto', sans-serif;
+        }
+        .toast-error { background-color: var(--toast-bg-err); color: white; }
+        .toast-info { background-color: var(--toast-bg-info); color: white; }
+        .toast-visible { transform: translateY(0) !important; }
 
         /* --- Header --- */
         header {
@@ -151,24 +170,30 @@
             text-shadow: 2px 2px 0px #000;
         }
 
-        /* UPDATED INSTRUCTION STYLE */
         .instruction { 
             font-size: 1.4rem; 
             color: var(--text); 
             text-transform: uppercase; 
             letter-spacing: 1px;
-            font-weight: 800; /* Bolder */
+            font-weight: 800; 
             text-shadow: 1px 1px 2px #000;
             margin-top: 5px;
         }
 
-        /* Numeric Grid */
+        /* 2. Scrollable Bet Bar (Single Row) */
         .num-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+            display: flex;
             gap: 8px;
             margin-bottom: 10px;
+            overflow-x: auto; /* Enable horizontal scrolling */
+            padding-bottom: 10px;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
         }
+        
+        /* Custom scrollbar for aesthetics */
+        .num-grid::-webkit-scrollbar { height: 6px; }
+        .num-grid::-webkit-scrollbar-track { background: #333; }
+        .num-grid::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 3px; }
 
         .num-btn {
             background: #333;
@@ -180,6 +205,10 @@
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.1s;
+            
+            /* Fixed width for flex items */
+            flex: 0 0 60px; 
+            width: 60px;
         }
 
         .num-btn:active, .num-btn.selected { 
@@ -284,7 +313,21 @@
             font-size: 1.2rem;
             min-width: 80px;
             border-bottom: 1px solid var(--gold-dim);
+            border-top: 4px solid transparent; /* placeholder for active frame */
         }
+        
+        /* 3. Dealer/Leader Frame Style */
+        th.dealer-frame {
+            border: 2px solid var(--gold);
+            background: #222;
+            position: sticky;
+            z-index: 5;
+            box-shadow: 0 0 10px var(--gold-dim);
+        }
+        
+        /* Icon for dealer */
+        .dealer-icon { font-size: 0.8rem; margin-right: 5px; color: var(--gold); display: none;}
+        th.dealer-frame .dealer-icon { display: inline-block; }
 
         td:first-child, th:first-child, tfoot td:first-child {
             position: sticky;
@@ -363,6 +406,8 @@
 </head>
 <body>
 
+    <div id="notification-bar"></div>
+
     <audio id="sfx-player" preload="auto"></audio>
 
     <header>
@@ -377,18 +422,14 @@
     <div id="rules-modal" class="modal" onclick="closeRules(event)">
         <div class="modal-content">
             <h2 id="modal-head">Bonus & Rules</h2>
-            <div id="rules-list">
-                </div>
+            <div id="rules-list"></div>
             <button class="btn-main" onclick="document.getElementById('rules-modal').style.display='none'" style="margin-top:20px; padding:10px;">Close</button>
         </div>
     </div>
 
     <div id="setup-screen">
         <h2 id="setup-title" style="color:var(--gold); font-family:'Pirata One'; font-size:2rem;">Ship Manifest</h2>
-        
-        <div class="input-list" id="player-inputs">
-            </div>
-        
+        <div class="input-list" id="player-inputs"></div>
         <button class="btn-add" onclick="addPlayerInput()">+ <span id="txt-add">Add Pirate</span></button>
         
         <div style="margin-top: 20px; text-align: left; background: #222; padding: 10px; border-radius: 4px; border: 1px solid #444;">
@@ -452,14 +493,27 @@
 
     <script>
         /* --- CONFIG --- */
-        const STORAGE_KEY = 'skullKing_Soren_v35';
+        const STORAGE_KEY = 'skullKing_Soren_v36';
         
-        // Sound Configuration: Local first, Online Backup
+        // Sound Configuration
         const SOUNDS = {
             start: { local: "argh.mp3", backup: "https://archive.org/download/PirateArrr/Pirate%20Arrr.mp3" },
             bet:   { local: "sword.mp3", backup: "https://archive.org/download/SwordSwoosh/SwordSwoosh.mp3" },
             score: { local: "coin.mp3", backup: "https://archive.org/download/Coins_201608/Coins.mp3" }
         };
+
+        /* --- NOTIFICATIONS (Replaces Alerts) --- */
+        function showToast(msg, type = 'error') {
+            const bar = document.getElementById('notification-bar');
+            bar.innerText = msg;
+            bar.className = (type === 'error') ? 'toast-error' : 'toast-info';
+            bar.classList.add('toast-visible');
+            
+            // Auto hide after 3 seconds
+            setTimeout(() => {
+                bar.classList.remove('toast-visible');
+            }, 3000);
+        }
 
         /* --- SOUND --- */
         function playSound(type) {
@@ -467,24 +521,16 @@
             const soundConfig = SOUNDS[type];
             if(!soundConfig) return;
 
-            // Try local first
             audio.src = soundConfig.local;
-
-            // Error handler: switch to backup if local fails
             audio.onerror = function() {
-                console.log(`Local ${type} sound failed, switching to backup`);
                 if (audio.src !== soundConfig.backup) {
                     audio.src = soundConfig.backup;
-                    audio.play().catch(e => console.log("Audio play failed:", e));
+                    audio.play().catch(() => {});
                 }
             };
-
             audio.currentTime = 0;
             audio.volume = 1.0; 
-            
-            // Attempt play
             audio.play().catch(() => {
-                // If local blocked or missing, force backup immediately (for some browsers)
                 if (audio.src.indexOf("http") === -1) {
                      audio.src = soundConfig.backup;
                      audio.play();
@@ -517,6 +563,8 @@
                 noBonusError: "Impossible! You cannot get Bonus Points if you won 0 tricks!",
                 review: "Review",
                 confirm: "Confirm",
+                needPirates: "You need at least 1 pirate to play!",
+                selectTricks: "Select tricks won first",
                 rules: [
                     ["Suits", "Yellow, Green, Purple (Low)"],
                     ["Jolly Roger", "Black (High Suit)"],
@@ -554,6 +602,8 @@
                 noBonusError: "Impossible ! Pas de Points Bonus avec 0 pli gagné !",
                 review: "Vérification",
                 confirm: "Confirmer",
+                needPirates: "Il faut au moins 1 pirate pour jouer !",
+                selectTricks: "Sélectionnez les plis gagnés d'abord",
                 rules: [
                     ["Couleurs", "Jaune, Vert, Violet (Bas)"],
                     ["Jolly Roger", "Noir (Atout)"],
@@ -695,7 +745,7 @@
             const inputs = document.querySelectorAll('.p-name');
             const names = Array.from(inputs).map(i => capitalize(i.value.trim())).filter(n => n !== "");
             
-            if(names.length < 1) return alert("Need pirates!");
+            if(names.length < 1) return showToast(t('needPirates'));
 
             if (!gameState.started || gameState.players.length === 0) {
                  gameState.players = names.map(n => ({
@@ -717,7 +767,7 @@
             renderTableStructure();
             renderWizard();
             saveState();
-            playSound('start'); // SOUND: Game Start
+            playSound('start');
         }
 
         function renderWizard() {
@@ -740,7 +790,6 @@
                 betControls.classList.add('hidden');
                 confirmSection.classList.remove('hidden');
 
-                // Build Summary List
                 const list = document.getElementById('summary-list');
                 list.innerHTML = '';
                 gameState.players.forEach(p => {
@@ -765,12 +814,12 @@
             wizRound.innerText = `${t('roundFull')}${gameState.round}`;
 
             numGrid.innerHTML = '';
+            numGrid.classList.remove('hidden');
 
             for(let i=0; i <= gameState.round; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'num-btn';
                 btn.innerText = i;
-                // Pre-select if saved in tempWonValue
                 if (gameState.tempWonValue === i) btn.classList.add('selected');
                 
                 btn.onclick = () => handleNumberClick(i);
@@ -780,7 +829,6 @@
             if (gameState.phase === 'betting') {
                 wizInstr.innerText = `${t('betInstr')} ${t('roundFull')} ${gameState.round}`;
                 bonusSection.classList.add('hidden');
-                numGrid.classList.remove('hidden');
                 
                 if(gameState.activePlayerIdx > 0) {
                     betControls.classList.remove('hidden');
@@ -790,10 +838,15 @@
             } else {
                 wizInstr.innerText = `${t('resInstr')} ${player.name}`;
                 betControls.classList.add('hidden');
-                bonusSection.classList.remove('hidden'); 
-                numGrid.classList.remove('hidden');
                 
-                // Restore bonus display
+                // 5. Conditional Bonus Display
+                // If tempWonValue is > 0 (and not null), show bonus. Else hide.
+                if (gameState.tempWonValue !== null && gameState.tempWonValue > 0) {
+                    bonusSection.classList.remove('hidden');
+                } else {
+                    bonusSection.classList.add('hidden');
+                }
+                
                 document.getElementById('bonus-display').innerText = gameState.tempBonus;
             }
             
@@ -811,9 +864,19 @@
                 saveState();
                 nextStep();
             } else {
-                gameState.tempWonValue = val; // Persistent selection
+                gameState.tempWonValue = val; 
+                
+                // If 0 is clicked, ensure bonus is reset and hidden
+                if (val === 0) {
+                    gameState.tempBonus = 0;
+                    document.getElementById('bonus-section').classList.add('hidden');
+                } else {
+                    document.getElementById('bonus-section').classList.remove('hidden');
+                }
+
                 saveState();
                 
+                // Visual update of buttons
                 const btns = document.querySelectorAll('.num-btn');
                 btns.forEach(b => {
                     if (parseInt(b.innerText) === val) {
@@ -832,7 +895,7 @@
         }
 
         function confirmResult() {
-            if (gameState.tempWonValue === null) return alert("Select tricks won first");
+            if (gameState.tempWonValue === null) return showToast(t('selectTricks'));
             
             let tricksSoFar = 0;
             gameState.players.forEach((p, idx) => {
@@ -843,12 +906,11 @@
             tricksSoFar += gameState.tempWonValue;
 
             if (tricksSoFar > gameState.round) {
-                alert(t('impossible') + ` (Current: ${tricksSoFar} vs Round: ${gameState.round})`);
-                return;
+                return showToast(t('impossible') + ` (Current: ${tricksSoFar} vs Round: ${gameState.round})`);
             }
 
             if (gameState.tempWonValue === 0 && gameState.tempBonus !== 0) {
-                alert(t('noBonusError'));
+                showToast(t('noBonusError'));
                 gameState.tempBonus = 0;
                 document.getElementById('bonus-display').innerText = "0";
                 saveState();
@@ -872,7 +934,6 @@
             updateScoreCell(gameState.activePlayerIdx, gameState.round, roundData);
             updateTotals();
             
-            // Clear temps for next player
             gameState.tempWonValue = null;
             gameState.tempBonus = 0;
             saveState();
@@ -887,22 +948,21 @@
         }
 
         function finalizePhase() {
-            // Triggered by "Confirm" Button on Summary Screen
             gameState.activePlayerIdx = 0;
             
             if (gameState.phase === 'betting') {
                 gameState.phase = 'scoring';
-                playSound('bet'); // SOUND: Sword for betting done
+                playSound('bet');
             } else {
-                // End of Scoring
                 if (gameState.round < gameState.maxRounds) {
-                    playSound('score'); // SOUND: Coin for score done
+                    playSound('score');
                     gameState.round++;
                     gameState.phase = 'betting';
+                    renderTableStructure(); // Update frame
                     addTableRow(gameState.round);
                 } else {
                     playSound('score');
-                    alert("Game Over! Check totals.");
+                    showToast("Game Over! Check totals.", 'info');
                     document.getElementById('input-zone').style.display = 'none';
                 }
             }
@@ -914,7 +974,6 @@
             if (gameState.activePlayerIdx > 0) {
                 gameState.activePlayerIdx--;
                 
-                // If we are reverting a scoring step, we need to repopulate the temps
                 if (gameState.phase === 'scoring') {
                    const prevPlayer = gameState.players[gameState.activePlayerIdx];
                    const data = prevPlayer.scores[gameState.round-1];
@@ -959,8 +1018,14 @@
             let htmlHead = `<tr><th>${t('round')}</th>`;
             let htmlFoot = `<tr><td>${t('total')}</td>`;
             
+            // 3. Dealer/Leader Logic: (Round-1) % NumPlayers
+            // e.g. R1=P1, R2=P2...
+            const leaderIdx = (gameState.round - 1) % gameState.players.length;
+
             gameState.players.forEach((p, idx) => {
-                htmlHead += `<th>${p.name.substring(0,8)}</th>`;
+                // Add class if leader
+                const isLeader = (idx === leaderIdx) ? 'dealer-frame' : '';
+                htmlHead += `<th class="${isLeader}"><span class="dealer-icon"><i class="fas fa-crown"></i></span>${p.name.substring(0,8)}</th>`;
                 htmlFoot += `<td id="total-p${idx}">0</td>`;
             });
             htmlHead += `</tr>`;
@@ -1003,7 +1068,7 @@
             let betDisplay = '-';
             if (data.bet !== undefined && data.bet !== null) {
                 betDisplay = `${t('betPrefix')} ${data.bet}`;
-                // Add actual result if available
+                // 2. Scoreboard Update: Show DONE value
                 if (data.won !== undefined && data.won !== null) {
                     betDisplay += ` | ${t('donePrefix')} ${data.won}`;
                 }
@@ -1011,15 +1076,14 @@
 
             const scoreDisplay = (data.points !== undefined) ? data.points : '';
             
-            // Color Logic
+            // 2. Color Logic: Darker if mismatch
             let color = '#fff';
             if (data.points !== undefined) {
                 if (data.points >= 0) {
-                    // Check perfection
                     if (data.won !== undefined && data.bet === data.won) {
-                        color = 'var(--gold)'; // Perfect
+                        color = 'var(--gold)'; // Perfect Match
                     } else {
-                        color = 'var(--gold-dim)'; // Partial or imperfect success
+                        color = 'var(--gold-dim)'; // Partial points (mismatch)
                     }
                 } else {
                     color = '#888'; // Negative
