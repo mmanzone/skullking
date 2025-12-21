@@ -95,7 +95,7 @@
             border-radius: 4px;
             color: #000;
             font-family: 'Pirata One', cursive;
-            text-transform: capitalize; /* Visual capitalization */
+            text-transform: capitalize;
         }
 
         .btn-main {
@@ -266,7 +266,6 @@
         }
         th:first-child { z-index: 4; }
         
-        /* Footer sticky at bottom */
         tfoot {
             position: sticky;
             bottom: 0;
@@ -334,7 +333,7 @@
 </head>
 <body>
 
-    <audio id="pirate-sound" src="https://archive.org/download/PirateArrr/Pirate%20Arrr.mp3" preload="auto"></audio>
+    <audio id="pirate-sound" src="/argh.mp3" preload="auto"></audio>
 
     <header>
         <h1><i class="fas fa-skull-crossbones"></i> Skull King</h1>
@@ -355,7 +354,7 @@
     </div>
 
     <div id="setup-screen">
-        <h2 id="setup-title" style="color:var(--gold); font-family:'Pirata One'; font-size:2rem;">Ship Manifesto</h2>
+        <h2 id="setup-title" style="color:var(--gold); font-family:'Pirata One'; font-size:2rem;">Ship Manifest</h2>
         
         <div class="input-list" id="player-inputs">
             </div>
@@ -422,10 +421,9 @@
         /* --- SOUND --- */
         function playPirateSound() {
             const audio = document.getElementById('pirate-sound');
-            // Reset to start if already playing or played
             audio.currentTime = 0;
             audio.volume = 0.5;
-            audio.play().catch(e => console.log("Audio requires interaction first"));
+            audio.play().catch(e => console.log("Audio requires interaction first or file missing"));
         }
 
         /* --- LOCALIZATION --- */
@@ -449,6 +447,7 @@
                 modalHead: "Bonus & Rules",
                 betPrefix: "Bet:",
                 impossible: "Impossible! Tricks won cannot exceed round number.",
+                noBonusError: "Impossible! You cannot get Bonus Points if you won 0 tricks!",
                 rules: [
                     ["Suits", "Yellow, Green, Purple (Low)"],
                     ["Jolly Roger", "Black (High Suit)"],
@@ -482,6 +481,7 @@
                 modalHead: "Règles & Bonus",
                 betPrefix: "Pari:",
                 impossible: "Impossible ! Le total des plis dépasse la manche.",
+                noBonusError: "Impossible ! Pas de Points Bonus avec 0 pli gagné !",
                 rules: [
                     ["Couleurs", "Jaune, Vert, Violet (Bas)"],
                     ["Jolly Roger", "Noir (Atout)"],
@@ -518,17 +518,15 @@
             document.getElementById('setup-title').innerText = t('manifest');
             document.getElementById('modal-head').innerText = t('modalHead');
             
-            // Re-render table and wizard to update labels
             if(gameState.started) {
                 renderWizard();
-                renderTableStructure(); // Update Total label
+                renderTableStructure(); 
                 gameState.players.forEach((p, idx) => {
                    p.scores.forEach((s, roundIdx) => updateScoreCell(idx, roundIdx+1, s));
                 });
                 updateTotals();
             }
 
-            // Update Rules Modal Content
             const rulesDiv = document.getElementById('rules-list');
             rulesDiv.innerHTML = '';
             I18N[curLang].rules.forEach(r => {
@@ -553,7 +551,6 @@
 
         /* --- INIT & SAVE --- */
         function init() {
-            // Check local storage
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 try {
@@ -575,7 +572,6 @@
                         document.getElementById('resume-msg').classList.remove('hidden');
                     }
                 } catch(e) {
-                    console.error("Save file corrupt", e);
                     localStorage.removeItem(STORAGE_KEY);
                     setupNewGame();
                 }
@@ -616,7 +612,6 @@
             input.className = 'p-name';
             input.placeholder = `Pirate ${num}`;
             input.value = val;
-            // Auto capitalize on blur
             input.onblur = function() { this.value = capitalize(this.value); };
             div.appendChild(input);
             document.getElementById('player-inputs').appendChild(div);
@@ -729,6 +724,7 @@
         function confirmResult() {
             if (tempWonValue === null) return alert("Select tricks won first");
             
+            // Validation 1: Tricks won count
             let tricksSoFar = 0;
             gameState.players.forEach((p, idx) => {
                 if (idx < gameState.activePlayerIdx && p.scores[gameState.round-1]) {
@@ -739,6 +735,15 @@
 
             if (tricksSoFar > gameState.round) {
                 alert(t('impossible') + ` (Current: ${tricksSoFar} vs Round: ${gameState.round})`);
+                return;
+            }
+
+            // Validation 2: Zero Tricks = Zero Bonus
+            if (tempWonValue === 0 && gameState.tempBonus !== 0) {
+                alert(t('noBonusError'));
+                // Reset bonus visual for them to fix or confirm
+                gameState.tempBonus = 0;
+                document.getElementById('bonus-display').innerText = "0";
                 return;
             }
 
@@ -754,7 +759,6 @@
                 roundData.points = calculateStandardScore(gameState.round, roundData.bet, roundData.won, roundData.bonus);
             }
 
-            // Recalculate total
             player.totalScore = player.scores.reduce((sum, s) => sum + (s.points || 0), 0);
             
             updateScoreCell(gameState.activePlayerIdx, gameState.round, roundData);
@@ -804,7 +808,6 @@
             const diff = Math.abs(bet - won);
             let baseScore = 0;
 
-            // Standard Soren: Exact=100%, OffBy1=50%, Else=0
             if (diff === 0) baseScore = potential;
             else if (diff === 1) baseScore = potential / 2;
             else baseScore = 0;
@@ -875,7 +878,6 @@
             const scoreDisplay = (data.points !== undefined) ? data.points : '';
             
             let color = '#fff';
-            // Scores >= 0 are gold (including zero)
             if(data.points >= 0) color = 'var(--gold)';
             if(data.points < 0) color = '#888';
 
@@ -906,7 +908,6 @@
             if(e.target.id === 'rules-modal') e.target.style.display = 'none';
         }
 
-        // Boot
         window.onload = init;
 
     </script>
