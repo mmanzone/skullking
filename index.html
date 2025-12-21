@@ -179,6 +179,27 @@
             transform: scale(0.95); 
         }
 
+        /* Summary List for Confirmation */
+        #summary-list {
+            margin-bottom: 15px;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #1a1a1d;
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid #333;
+            font-family: 'Pirata One', cursive;
+            font-size: 1.2rem;
+        }
+        .summary-item:last-child { border-bottom: none; }
+        .summary-val { color: var(--gold); }
+
+
         /* Bonus Controls */
         .bonus-controls {
             display: flex;
@@ -400,6 +421,12 @@
             </div>
         </div>
         
+        <div id="confirm-section" class="hidden">
+            <div id="summary-list"></div>
+            <button class="btn-confirm" onclick="finalizePhase()" style="width:100%"><i class="fas fa-check"></i> Confirm</button>
+            <button class="btn-revert" onclick="revertAction()" style="width:100%; margin-top:10px; border:none; color:#666">Go Back</button>
+        </div>
+        
         <div id="bet-controls" class="action-row hidden">
                 <button class="btn-revert" onclick="revertAction()" style="width: 100%"><i class="fas fa-undo"></i> <span id="txt-undo">Undo</span></button>
         </div>
@@ -416,37 +443,26 @@
 
     <script>
         /* --- CONFIG --- */
-        const STORAGE_KEY = 'skullKingSoren_v32';
-        
-        /* --- SOUND --- */
+        const STORAGE_KEY = 'skullKingSoren_v33';
         const FALLBACK_SOUND = "https://archive.org/download/PirateArrr/Pirate%20Arrr.mp3";
         
+        /* --- SOUND --- */
         function playPirateSound() {
             const audio = document.getElementById('pirate-sound');
-            
-            // Setup error handler just in case local file is missing
             audio.onerror = function() {
-                console.log("Local audio failed, switching to fallback");
-                // Avoid infinite loop if fallback also fails
                 if (audio.src !== FALLBACK_SOUND) {
                     audio.src = FALLBACK_SOUND;
                     audio.play();
                 }
             };
-
             audio.currentTime = 0;
             audio.volume = 1.0; 
-            
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.log("Audio play blocked or file missing. Trying fallback immediately.");
-                    if (audio.src.indexOf("http") === -1) {
-                         audio.src = FALLBACK_SOUND;
-                         audio.play();
-                    }
-                });
-            }
+            audio.play().catch(() => {
+                if (audio.src.indexOf("http") === -1) {
+                     audio.src = FALLBACK_SOUND;
+                     audio.play();
+                }
+            });
         }
 
         /* --- LOCALIZATION --- */
@@ -471,6 +487,8 @@
                 betPrefix: "Bet:",
                 impossible: "Impossible! Tricks won cannot exceed round number.",
                 noBonusError: "Impossible! You cannot get Bonus Points if you won 0 tricks!",
+                review: "Review",
+                confirm: "Confirm",
                 rules: [
                     ["Suits", "Yellow, Green, Purple (Low)"],
                     ["Jolly Roger", "Black (High Suit)"],
@@ -505,6 +523,8 @@
                 betPrefix: "Pari:",
                 impossible: "Impossible ! Le total des plis dépasse la manche.",
                 noBonusError: "Impossible ! Pas de Points Bonus avec 0 pli gagné !",
+                review: "Vérification",
+                confirm: "Confirmer",
                 rules: [
                     ["Couleurs", "Jaune, Vert, Violet (Bas)"],
                     ["Jolly Roger", "Noir (Atout)"],
@@ -670,13 +690,47 @@
         }
 
         function renderWizard() {
-            const player = gameState.players[gameState.activePlayerIdx];
             const wizPlayer = document.getElementById('wiz-player');
             const wizInstr = document.getElementById('wiz-instruction');
             const wizRound = document.getElementById('wiz-round');
             const numGrid = document.getElementById('number-grid');
             const bonusSection = document.getElementById('bonus-section');
             const betControls = document.getElementById('bet-controls');
+            const confirmSection = document.getElementById('confirm-section');
+
+            // --- CONFIRMATION STATE ---
+            // If the active index is beyond the last player, show Confirmation Screen
+            if(gameState.activePlayerIdx >= gameState.players.length) {
+                wizPlayer.innerText = t('review');
+                wizInstr.innerText = (gameState.phase === 'betting') ? "Check Bets" : "Check Scores";
+                wizRound.innerText = "";
+                
+                numGrid.classList.add('hidden');
+                bonusSection.classList.add('hidden');
+                betControls.classList.add('hidden');
+                confirmSection.classList.remove('hidden');
+
+                // Build Summary List
+                const list = document.getElementById('summary-list');
+                list.innerHTML = '';
+                gameState.players.forEach(p => {
+                    const data = p.scores[gameState.round-1] || {};
+                    let valDisplay = '';
+                    if(gameState.phase === 'betting') valDisplay = `${t('betPrefix')} ${data.bet}`;
+                    else valDisplay = `Won: ${data.won} / Pts: ${data.points}`;
+                    
+                    const item = document.createElement('div');
+                    item.className = 'summary-item';
+                    item.innerHTML = `<span>${p.name}</span><span class="summary-val">${valDisplay}</span>`;
+                    list.appendChild(item);
+                });
+
+                return; // Stop here, waiting for confirm
+            }
+
+            // --- NORMAL INPUT STATE ---
+            confirmSection.classList.add('hidden');
+            const player = gameState.players[gameState.activePlayerIdx];
 
             wizPlayer.innerText = player.name;
             wizRound.innerText = `${t('roundFull')}${gameState.round}`;
@@ -747,7 +801,6 @@
         function confirmResult() {
             if (tempWonValue === null) return alert("Select tricks won first");
             
-            // Validation 1: Tricks won count
             let tricksSoFar = 0;
             gameState.players.forEach((p, idx) => {
                 if (idx < gameState.activePlayerIdx && p.scores[gameState.round-1]) {
@@ -761,7 +814,6 @@
                 return;
             }
 
-            // Validation 2: Zero Tricks = Zero Bonus
             if (tempWonValue === 0 && gameState.tempBonus !== 0) {
                 alert(t('noBonusError'));
                 gameState.tempBonus = 0;
@@ -793,24 +845,30 @@
 
         function nextStep() {
             gameState.activePlayerIdx++;
+            // Check if we hit end of players. 
+            // If so, renderWizard will handle the "Confirmation" screen.
+            saveState();
+            renderWizard();
+        }
 
-            if(gameState.activePlayerIdx >= gameState.players.length) {
-                gameState.activePlayerIdx = 0;
-                
-                if (gameState.phase === 'betting') {
-                    gameState.phase = 'scoring';
+        function finalizePhase() {
+            // Triggered by "Confirm" Button on Summary Screen
+            gameState.activePlayerIdx = 0;
+            
+            if (gameState.phase === 'betting') {
+                gameState.phase = 'scoring';
+                playPirateSound();
+            } else {
+                // End of Scoring
+                if (gameState.round < gameState.maxRounds) {
                     playPirateSound();
+                    gameState.round++;
+                    gameState.phase = 'betting';
+                    addTableRow(gameState.round);
                 } else {
-                    if (gameState.round < gameState.maxRounds) {
-                        playPirateSound();
-                        gameState.round++;
-                        gameState.phase = 'betting';
-                        addTableRow(gameState.round);
-                    } else {
-                        playPirateSound();
-                        alert("Game Over! Check totals.");
-                        document.getElementById('input-zone').style.display = 'none';
-                    }
+                    playPirateSound();
+                    alert("Game Over! Check totals.");
+                    document.getElementById('input-zone').style.display = 'none';
                 }
             }
             saveState();
