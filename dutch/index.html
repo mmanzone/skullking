@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dutch Power!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../common/style.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+
+<body>
+
+    <header>
+        <h1>⚡ DUTCH</h1>
+        <div class="header-controls">
+            <button onclick="showRules()"><i class="fas fa-question"></i></button>
+            <button onclick="resetGame()"><i class="fas fa-trash"></i></button>
+            <button onclick="CommonGame.goHome()"><i class="fas fa-home"></i></button>
+        </div>
+    </header>
+
+    <!-- Setup -->
+    <div id="setup-screen" class="container">
+        <h2>SETUP</h2>
+
+        <div class="mode-select">
+            <button class="mode-btn selected" onclick="setMode('score')" id="btn-mode-score">Max Score</button>
+            <button class="mode-btn" onclick="setMode('rounds')" id="btn-mode-rounds">Rounds</button>
+        </div>
+
+        <div class="input-row">
+            <label style="font-family:'Press Start 2P'; font-size:0.7rem; align-self:center;">Limit:</label>
+            <input type="number" id="game-limit" value="100">
+        </div>
+
+        <div id="players-list"></div>
+        <button onclick="addPlayerInput()"
+            style="background:none; border:none; color:#fff; font-family:'Press Start 2P'; margin:10px; cursor:pointer;">[+
+            ADD PLAYER]</button>
+
+        <button class="btn-start" onclick="startGame()">START GAME</button>
+    </div>
+
+    <!-- Game Board -->
+    <div id="game-board" class="game-board">
+        <div class="scoreboard">
+            <table id="score-table">
+                <thead>
+                    <tr id="table-head"></tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+                <tfoot id="table-foot"></tfoot>
+            </table>
+        </div>
+
+        <div class="controls-area">
+            <div
+                style="text-align:center; color:white; font-family:'Press Start 2P'; font-size:0.6rem; margin-bottom:10px;">
+                WHO CALLED DUTCH?</div>
+            <div class="player-toggles" id="dutch-toggles"></div>
+            <button class="btn-score" onclick="openRoundInput()">ENTER SCORES >></button>
+
+            <div class="common-footer" style="padding:10px; background:transparent; border:none;">
+                <button class="btn-home" onclick="CommonGame.goHome()"><i class="fas fa-arrow-left"></i> EXIT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Round Input Modal -->
+    <div id="round-modal" class="modal">
+        <div class="modal-content">
+            <h2>ROUND SCORES</h2>
+            <div id="modal-inputs"></div>
+            <button class="btn-start" onclick="submitScores()">CONFIRM</button>
+            <button onclick="closeModal()"
+                style="width:100%; margin-top:10px; padding:10px; border:none; background:#ccc; font-family:'Press Start 2P'; cursor:pointer;">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- Rules Modal -->
+    <div id="rules-modal" class="modal">
+        <div class="modal-content" style="font-family:'Roboto';">
+            <h2>RULES</h2>
+            <ul style="text-align:left; font-size:0.9rem;">
+                <li>Get lowest score.</li>
+                <li>Call <strong>DUTCH</strong> before score input.</li>
+                <li>If Dutch has lowest: <strong>-10 pts</strong>.</li>
+                <li>If Dutch NOT lowest: <strong>Hand + 10 pts</strong>.</li>
+                <li>Others: Count cards in hand.</li>
+                <li>Ends when Limit reached (Max Pts or Rounds).</li>
+            </ul>
+            <button onclick="document.getElementById('rules-modal').classList.remove('visible')"
+                class="btn-start">OK</button>
+        </div>
+    </div>
+
+    <script src="../common/script.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

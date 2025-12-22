@@ -1,0 +1,31 @@
+/* Shared Styles for Game Headers/Footers */
+:root {
+    --header-height: 60px;
+}
+
+.common-footer {
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid #333;
+    margin-top: 20px;
+    background: #111;
+}
+
+.btn-home {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 10px 20px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-family: sans-serif;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.btn-home:hover {
+    background: #444;
+}

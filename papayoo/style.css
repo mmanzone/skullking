@@ -1,0 +1,332 @@
+:root {
+    --bg-color: #2c003e;
+    /* Deep Vivid Purple */
+    --text-color: #fff;
+    --primary: #8e44ad;
+    --accent-yellow: #f1c40f;
+    --accent-green: #2ecc71;
+    --accent-orange: #e67e22;
+    --accent-blue: #3498db;
+    --header-bg: #1a0025;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+    font-family: 'Bangers', cursive;
+    letter-spacing: 1px;
+}
+
+/* Header */
+header {
+    background: var(--header-bg);
+    padding: 0 15px;
+    height: 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--accent-yellow);
+    flex-shrink: 0;
+}
+
+h1 {
+    margin: 0;
+    color: var(--accent-yellow);
+    font-size: 1.6rem;
+    text-shadow: 2px 2px 0 #000;
+}
+
+.header-controls button {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--accent-yellow);
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    margin-left: 5px;
+}
+
+/* Setup Screen */
+.container {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+    text-align: center;
+}
+
+.input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+input[type="text"] {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 2px solid var(--primary);
+    background: #4a148c;
+    color: white;
+    font-family: 'Bangers', cursive;
+    font-size: 1.2rem;
+}
+
+/* Dealer Radio */
+.dealer-select {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid var(--accent-orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    color: transparent;
+}
+
+.dealer-select.selected {
+    background: var(--accent-orange);
+    color: #000;
+    font-weight: bold;
+}
+
+/* Buttons */
+.btn-main,
+.btn-action {
+    background: linear-gradient(45deg, var(--accent-orange), var(--accent-yellow));
+    color: #2c003e;
+    border: none;
+    padding: 15px 30px;
+    font-family: 'Bangers', cursive;
+    font-size: 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 20px;
+    box-shadow: 0 4px 0 #c25e00;
+    transition: transform 0.1s;
+}
+
+.btn-main:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 2px dashed var(--primary);
+    color: var(--primary);
+    padding: 10px;
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* Game Board */
+.game-board {
+    display: none;
+    /* Hidden by default */
+    flex-direction: column;
+    height: 100%;
+}
+
+.dice-section {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    text-align: center;
+    border-bottom: 1px solid var(--primary);
+}
+
+.color-dice-row {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.suit-btn {
+    font-size: 2rem;
+    background: #fff;
+    border-radius: 12px;
+    width: 50px;
+    height: 50px;
+    border: none;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: all 0.2s;
+}
+
+.suit-btn.selected {
+    opacity: 1;
+    transform: scale(1.2);
+    box-shadow: 0 0 15px currentColor;
+    border: 2px solid white;
+}
+
+.suit-spades {
+    color: black;
+}
+
+.suit-hearts {
+    color: #e74c3c;
+}
+
+.suit-clubs {
+    color: black;
+}
+
+.suit-diamonds {
+    color: #e74c3c;
+}
+
+.papayou-btn-container {
+    text-align: center;
+    padding: 10px;
+}
+
+.btn-papayou {
+    background: #e91e63;
+    color: white;
+    font-size: 2rem;
+    padding: 10px 40px;
+    border-radius: 50px;
+    border: none;
+    font-family: 'Bangers', cursive;
+    box-shadow: 0 0 20px #e91e63;
+    animation: pulse 2s infinite;
+    cursor: pointer;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Score Table */
+.scoreboard {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    padding-bottom: 60px;
+    /* Space for footer */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+th {
+    background: #1a0025;
+    color: var(--accent-yellow);
+    position: sticky;
+    top: 0;
+    padding: 10px;
+    font-family: 'Bangers', cursive;
+    z-index: 2;
+}
+
+td {
+    border-bottom: 1px solid var(--primary);
+    padding: 10px 5px;
+}
+
+.total-row td {
+    border-top: 2px solid var(--accent-yellow);
+    font-weight: bold;
+    color: var(--accent-yellow);
+    background: #1a0025;
+}
+
+/* Round Input Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 100;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.visible {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--bg-color);
+    border: 2px solid var(--accent-yellow);
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.score-input-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.score-input-row label {
+    font-family: 'Bangers';
+    font-size: 1.2rem;
+}
+
+.score-input-row input {
+    width: 80px;
+    text-align: center;
+}
+
+.score-hud {
+    text-align: center;
+    font-size: 1.5rem;
+    margin: 10px 0;
+    font-family: 'Bangers';
+    color: var(--accent-green);
+}
+
+.score-hud.error {
+    color: #e74c3c;
+}
+
+/* Rules Modal */
+.rules-content p {
+    text-align: left;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}

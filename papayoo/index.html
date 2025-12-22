@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papayoo Score Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Roboto:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../common/style.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+
+<body>
+
+    <header>
+        <h1>🎲 Papayoo</h1>
+        <div class="header-controls">
+            <button onclick="showRules()"><i class="fas fa-question-circle"></i></button>
+            <button onclick="resetGame()"><i class="fas fa-trash-alt"></i></button>
+            <button onclick="CommonGame.goHome()"><i class="fas fa-home"></i></button>
+        </div>
+    </header>
+
+    <!-- Setup Screen -->
+    <div id="setup-screen" class="container">
+        <h2>Qui joue ?</h2>
+        <div id="players-list">
+            <!-- Inputs generated here -->
+        </div>
+        <button class="btn-secondary" onclick="addPlayerInput()">+ Ajouter Joueur</button>
+        <button class="btn-main" onclick="startGame()">Commencer la partie !</button>
+    </div>
+
+    <!-- Game Board (Hidden initially) -->
+    <div id="game-board" class="game-board">
+
+        <!-- Dice Section -->
+        <div class="dice-section">
+            <div style="font-family:'Bangers'; color:#fff; font-size:1.2rem;">Couleur du Papayoo (7)</div>
+            <div class="color-dice-row" id="dice-row">
+                <button class="suit-btn suit-hearts" onclick="setPapayooColor('♥')">♥</button>
+                <button class="suit-btn suit-diamonds" onclick="setPapayooColor('♦')">♦</button>
+                <button class="suit-btn suit-clubs" onclick="setPapayooColor('♣')">♣</button>
+                <button class="suit-btn suit-spades" onclick="setPapayooColor('♠')">♠</button>
+            </div>
+        </div>
+
+        <!-- Papayou Button -->
+        <div class="papayou-btn-container">
+            <button class="btn-papayou" onclick="playPapayouSound()">PAPAYOO !</button>
+        </div>
+
+        <!-- Scoreboard -->
+        <div class="scoreboard">
+            <table id="score-table">
+                <thead>
+                    <tr id="table-head-row">
+                        <th>M.</th>
+                        <!-- Player headers -->
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Rounds -->
+                </tbody>
+                <tfoot>
+                    <tr id="total-row" class="total-row">
+                        <td>Tot.</td>
+                        <!-- Totals -->
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div style="padding: 10px;">
+                <button class="btn-main" onclick="openRoundInput()">Noter les points</button>
+            </div>
+
+            <div class="common-footer">
+                <button class="btn-home" onclick="CommonGame.goHome()"><i class="fas fa-arrow-left"></i>
+                    Accueil</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Round Input Modal -->
+    <div id="round-modal" class="modal">
+        <div class="modal-content">
+            <h2>Résultats Manche <span id="modal-round-num"></span></h2>
+            <div id="modal-inputs"></div>
+
+            <div class="score-hud" id="score-hud">Total: 0 / 250</div>
+
+            <button class="btn-secondary" onclick="fillMissingScore()">Compléter Auto</button>
+            <button class="btn-main" onclick="saveRoundScores()">Valider</button>
+            <button class="btn-secondary" onclick="closeModal()" style="border:none; color:#aaa;">Annuler</button>
+        </div>
+    </div>
+
+    <!-- Final Ranking Modal -->
+    <div id="ranking-modal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <h2>🏆 Résultats Finaux</h2>
+            <div id="ranking-list" style="text-align:left; margin-bottom:20px;"></div>
+            <button class="btn-main" onclick="shareResults()">📸 Partager Image</button>
+            <button class="btn-secondary" onclick="resetGame()">Nouvelle Partie</button>
+        </div>
+    </div>
+
+    <!-- Rules Modal -->
+    <div id="rules-modal" class="modal">
+        <div class="modal-content rules-content">
+            <h2>Règles Papayoo</h2>
+            <p><strong>But :</strong> Faire le MOINS de points possible.</p>
+            <p><strong>Papayoo :</strong> Le 7 de la couleur du dé vaut 40 points.</p>
+            <p><strong>Les Payoo :</strong> Les cartes Payoo (Points) valent leur valeur (1 à 20).</p>
+            <p><strong>Total :</strong> 250 points par manche.</p>
+            <p><strong>Donne :</strong>
+                3j: 20 cartes (reste 0)<br>
+                4j: 15 cartes (reste 0)<br>
+                5j: 12 cartes (reste 0)<br>
+                6j: 10 cartes (reste 0)<br>
+            </p>
+            <button class="btn-main"
+                onclick="document.getElementById('rules-modal').classList.remove('visible')">Fermer</button>
+        </div>
+    </div>
+
+    <audio id="sfx-papayou" src="../papayou.mp3"></audio> <!-- Assuming I find it or put it there -->
+    <script src="../common/script.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
