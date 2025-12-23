@@ -12,11 +12,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
-            --bg-color: #121212;
+            --bg-color: #2d5a27;
+            /* Green Felt */
             --text-color: #f0f0f0;
-            --card-bg: #1e1e1e;
+            --card-bg: #e8f5e9;
+            /* Light cream/greenish paper for cards */
+            --card-text: #1b3a1b;
             --accent-color: #d4af37;
-            /* Gold from Skull King */
         }
 
         * {
@@ -26,6 +28,7 @@
         body {
             font-family: 'Roboto', sans-serif;
             background-color: var(--bg-color);
+            background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2335662f' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
             color: var(--text-color);
             margin: 0;
             padding: 20px;
@@ -35,24 +38,38 @@
             min-height: 100vh;
         }
 
-        .lang-switch {
+        .top-controls {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: #333;
-            border: 1px solid #555;
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            background: #1b3a1b;
+            border: 1px solid #4a8c4a;
             color: #fff;
-            padding: 5px 10px;
+            padding: 8px 12px;
             cursor: pointer;
             border-radius: 4px;
             font-size: 1.2rem;
+            transition: background 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: #2d5a27;
         }
 
         h1 {
-            color: var(--accent-color);
+            color: #fff;
             margin-bottom: 40px;
             text-align: center;
-            margin-top: 40px;
+            margin-top: 60px;
+            font-family: 'Bangers', cursive;
+            font-size: 3rem;
+            text-shadow: 2px 2px 0 #1b3a1b;
+            letter-spacing: 2px;
         }
 
         .game-grid {
@@ -65,22 +82,24 @@
 
         .game-card {
             background: var(--card-bg);
-            border: 2px solid #333;
+            border: 4px solid #fff;
             border-radius: 12px;
             padding: 30px;
             text-align: center;
             text-decoration: none;
-            color: white;
-            transition: transform 0.2s, border-color 0.2s;
+            color: var(--card-text);
+            transition: transform 0.2s, box-shadow 0.2s;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            position: relative;
         }
 
         .game-card:hover {
             transform: translateY(-5px);
-            border-color: var(--accent-color);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
         }
 
         .game-icon {
@@ -96,53 +115,117 @@
         /* Specific Game Styles */
         .card-skullking {
             font-family: 'Pirata One', cursive;
-            --accent-color: #d4af37;
+            border-color: #d4af37;
+        }
+
+        .card-skullking .game-title {
+            color: #8a7326;
         }
 
         .card-papayoo {
             font-family: 'Bangers', cursive;
-            /* Fun font */
-            --accent-color: #9b59b6;
-            /* Purple */
             border-color: #9b59b6;
         }
 
-        .card-papayoo:hover {
-            border-color: #f1c40f;
+        .card-papayoo .game-title {
+            color: #8e44ad;
         }
-
-        /* Yellow on hover */
 
         .card-dutch {
             font-family: 'Press Start 2P', cursive;
-            /* Retro/High energy */
             font-size: 0.8rem;
-            /* Start 2P is large */
-            --accent-color: #e74c3c;
             border-color: #e74c3c;
         }
 
         .card-dutch .game-title {
             font-size: 1.2rem;
             margin-top: 10px;
-        }
-
-        .card-dutch:hover {
-            border-color: #2ecc71;
+            color: #c0392b;
         }
 
         .footer {
             margin-top: auto;
-            color: #666;
+            color: rgba(255, 255, 255, 0.7);
             font-size: 0.9rem;
             padding-top: 40px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.visible {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #fff;
+            color: #333;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .settings-row {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        select,
+        button.btn-danger {
+            padding: 10px;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        select {
+            border: 1px solid #ccc;
+            width: 100%;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            width: 100%;
+        }
+
+        .btn-close {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
         }
     </style>
 </head>
 
 <body>
 
-    <button class="lang-switch" onclick="toggleLang()" id="btn-lang">🇬🇧</button>
+    <div class="top-controls">
+        <button class="icon-btn" onclick="toggleLang()" id="btn-lang" title="Switch Language">🇬🇧</button>
+        <button class="icon-btn" onclick="openSettings()" title="Settings"><i class="fas fa-cog"></i></button>
+    </div>
 
     <h1 id="main-title">Score Tracker</h1>
 
@@ -170,39 +253,100 @@
         Fait maison pour les vacances
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h2 data-i18n="settings">Paramètres</h2>
+
+            <div class="settings-row">
+                <label data-i18n="def_lang">Langue par défaut</label>
+                <select id="default-lang-select" onchange="setDefaultLang(this.value)">
+                    <option value="fr">Français</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+
+            <div class="settings-row">
+                <button class="btn-danger" onclick="clearPlayerHistory()" data-i18n="clear_hist">Effacer Historique
+                    Joueurs</button>
+            </div>
+
+            <button class="btn-close" onclick="closeSettings()" data-i18n="close">Fermer</button>
+        </div>
+    </div>
+
     <script>
         const I18N = {
             fr: {
-                title: "Tableau de Score",
+                title: "Soirée Jeux",
                 sk_desc: "Hisser les voiles !",
                 pp_desc: "Gare au 7 !",
                 dt_desc: "Le plus bas gagne !",
-                footer: "Fait maison pour les vacances"
+                footer: "Fait maison pour les vacances",
+                settings: "Paramètres",
+                def_lang: "Langue par défaut",
+                clear_hist: "Effacer Historique Joueurs",
+                close: "Fermer",
+                cleared: "Historique effacé !"
             },
             en: {
-                title: "Score Tracker",
+                title: "Game Night",
                 sk_desc: "Set Sail!",
                 pp_desc: "Beware the 7!",
                 dt_desc: "Lowest score wins!",
-                footer: "Home made for the holidays"
+                footer: "Home made for the holidays",
+                settings: "Settings",
+                def_lang: "Default Language",
+                clear_hist: "Clear Player History",
+                close: "Close",
+                cleared: "History cleared!"
             }
         };
 
-        let curLang = 'fr';
+        const STORAGE_KEY = 'Common_Settings';
+        let settings = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"defaultLang":"fr"}');
+        let curLang = settings.defaultLang;
 
-        function toggleLang() {
-            curLang = curLang === 'fr' ? 'en' : 'fr';
-            document.getElementById('btn-lang').innerText = curLang === 'fr' ? '🇬🇧' : '🇫🇷';
-            updateText();
+        function init() {
+            // Apply language
+            setLang(curLang);
+            document.getElementById('default-lang-select').value = settings.defaultLang;
         }
 
-        function updateText() {
+        function setLang(lang) {
+            curLang = lang;
+            document.getElementById('btn-lang').innerText = curLang === 'fr' ? '🇬🇧' : '🇫🇷';
+
             document.getElementById('main-title').innerText = I18N[curLang].title;
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if (I18N[curLang][key]) el.innerText = I18N[curLang][key];
             });
         }
+
+        function toggleLang() {
+            setLang(curLang === 'fr' ? 'en' : 'fr');
+        }
+
+        function openSettings() {
+            document.getElementById('settings-modal').classList.add('visible');
+        }
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.remove('visible');
+        }
+
+        function setDefaultLang(val) {
+            settings.defaultLang = val;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+        }
+
+        function clearPlayerHistory() {
+            const SHARED_HISTORY_KEY = 'skullKing_Names';
+            localStorage.removeItem(SHARED_HISTORY_KEY);
+            alert(I18N[curLang].cleared);
+        }
+
+        window.onload = init;
     </script>
 </body>
 
