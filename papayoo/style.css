@@ -369,3 +369,9 @@ td {
     border: 2px solid #fff;
     text-align: center;
 }
+
+/* Force Footer Transparent */
+.common-footer {
+    background: transparent !important;
+    box-shadow: none !important;
+}

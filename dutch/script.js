@@ -90,7 +90,7 @@ function init() {
 function renderSetup() {
     const list = document.getElementById('players-list');
     list.innerHTML = '';
-    const count = Math.max(gameState.players.length || 3, 3);
+    const count = Math.max(gameState.players.length || 4, 4);
     for (let i = 0; i < count; i++) {
         addPlayerInput(gameState.players[i] || '');
     }
