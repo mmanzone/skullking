@@ -182,8 +182,12 @@ function startGame() {
         return;
     }
 
-    // Capitalize handled in savePlayerName, but let's do it here for local state too
+    // Capitalize handled in savePlayerName
     const capNames = names.map(n => n.charAt(0).toUpperCase() + n.slice(1));
+
+    // Unique Check
+    if (new Set(capNames).size !== capNames.length) return showWarnUI("Duplicate names!");
+
     gameState.players = capNames;
     capNames.forEach(n => CommonGame.savePlayerName(n));
     gameState.rounds = [];
@@ -208,7 +212,7 @@ function setPapayooColor(suit) {
 }
 
 function updateDiceLabel() {
-    const roundNum = gameState.rounds.length + 1;
+    const roundNum = (editingRoundIdx > -1) ? (editingRoundIdx + 1) : (gameState.rounds.length + 1);
     let label = t('dice_label').replace('#', roundNum);
     document.getElementById('dice-label').innerText = label;
 
@@ -235,24 +239,40 @@ function playPapayouSound() {
     audio.play().catch(e => console.log(e));
 }
 
+let editingRoundIdx = -1;
+
 function openRoundInput() {
-    // Validate dice selection
+    editingRoundIdx = -1;
+    // Validate dice selection (only for new rounds)
     if (!gameState.activePapayooColor) {
         showWarnUI(t('warn_dice'));
         return;
     }
+    _openModal();
+}
 
+function editRound(idx) {
+    editingRoundIdx = idx;
+    // Load data
+    const r = gameState.rounds[idx];
+    // We don't change dice color in edit mode (simplification), or stored color?
+    // r.color is stored.
+    _openModal(r.scores);
+}
+
+function _openModal(scores = null) {
     const modal = document.getElementById('round-modal');
     const container = document.getElementById('modal-inputs');
-    document.getElementById('modal-round-num').innerText = gameState.rounds.length + 1;
+    document.getElementById('modal-round-num').innerText = (editingRoundIdx > -1) ? (editingRoundIdx + 1) : (gameState.rounds.length + 1);
 
     container.innerHTML = '';
     gameState.players.forEach((p, i) => {
+        const val = scores ? scores[i] : '';
         const div = document.createElement('div');
         div.className = 'score-input-row';
         div.innerHTML = `
             <label>${p}</label>
-            <input type="number" class="score-input" data-idx="${i}" oninput="updateHud()">
+            <input type="number" class="score-input" data-idx="${i}" value="${val}" oninput="updateHud()">
         `;
         container.appendChild(div);
     });
@@ -311,14 +331,19 @@ function saveRoundScores() {
         return;
     }
 
-    gameState.rounds.push({
-        scores: scores,
-        color: gameState.activePapayooColor
-    });
-
-    gameState.dealerIdx = (gameState.dealerIdx + 1) % gameState.players.length;
-    // Reset Dice
-    gameState.activePapayooColor = null;
+    if (editingRoundIdx > -1) {
+        // preserve existing color
+        gameState.rounds[editingRoundIdx].scores = scores;
+        // if user wants to edit color, it's not supported here.
+    } else {
+        gameState.rounds.push({
+            scores: scores,
+            color: gameState.activePapayooColor
+        });
+        gameState.dealerIdx = (gameState.dealerIdx + 1) % gameState.players.length;
+        // Reset Dice
+        gameState.activePapayooColor = null;
+    }
 
     saveState();
     closeModal();
@@ -354,7 +379,7 @@ function renderScoreTable() {
 
     gameState.rounds.forEach((r, rIdx) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td><span style="color:#aaa">${rIdx + 1}</span> <span style="font-size:0.8rem">${r.color}</span></td>`;
+        tr.innerHTML = `<td><span style="color:#aaa">${rIdx + 1}</span> <span style="font-size:0.8rem">${r.color}</span> <i class="fas fa-edit" onclick="editRound(${rIdx})" style="cursor:pointer; color:#888; margin-left:5px; font-size:0.8rem;"></i></td>`;
 
         r.scores.forEach((s, pIdx) => {
             totals[pIdx] += s;

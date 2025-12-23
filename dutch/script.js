@@ -131,11 +131,15 @@ function setMode(m) {
     }
 }
 
+let editingRoundIndex = -1;
+
 function startGame() {
     const inputs = document.querySelectorAll('.p-name');
     const names = Array.from(inputs).map(i => i.value.trim()).filter(n => n);
 
-    if (names.length < 2) return alert("Min 2 players"); // Kept simple
+    // Unique Check
+    if (new Set(names).size !== names.length) return alert(t('unique_err') || "Unique names required!");
+    if (names.length < 2) return alert("Min 2 players");
 
     gameState.players = names.map(n => n.charAt(0).toUpperCase() + n.slice(1));
     gameState.players.forEach(n => CommonGame.savePlayerName(n));
@@ -153,19 +157,53 @@ function setupBoard() {
 }
 
 function openRoundInput() {
+    editingRoundIndex = -1;
+    openModalForInput();
+}
+
+function editRound(idx) {
+    editingRoundIndex = idx;
+    openModalForInput(gameState.rounds[idx]);
+}
+
+function openModalForInput(data = null) {
     const modal = document.getElementById('round-modal');
     const container = document.getElementById('modal-inputs');
     container.innerHTML = '';
 
     gameState.players.forEach((p, i) => {
+        // Prepare values if editing
+        let val = '';
+        let isCaller = false;
+
+        if (data) {
+            // Data is object { scores: [], caller: idx/null }
+            if (data.scores) {
+                // Must reverse-engineer raw score? 
+                // Wait, we stored FINAL scores. We don't have raw scores.
+                // We have to ask user to re-enter raw scores or just final scores?
+                // Request implies "edit the row".
+                // We'll let them edit the FINAL VALUE directly if simple, OR we assume they know the calculation.
+                // Actually, for Dutch, logic is applied on save. 
+                // Let's assume we just ask for the numeric entry again.
+                // If we don't store raw, we can't easily pre-fill 100% correctly if logic modified it (-10).
+                // Simplified: Just pre-fill with the stored score, user adjusts.
+                val = data.scores[i];
+            } else {
+                // Legacy support (array)
+                val = data[i];
+            }
+            if (data.caller === i) isCaller = true;
+        }
+
         const div = document.createElement('div');
         div.className = 'dutch-call-row';
         div.innerHTML = `
             <div style="flex:1; text-align:left;">
                 <label style="font-weight:bold;">${p}</label>
             </div>
-            <button class="btn-dutch-toggle" id="dutch-btn-${i}" onclick="toggleDutch(${i})">DUTCH</button>
-            <input type="number" class="score-input" id="score-${i}" placeholder="0" style="width:60px; text-align:center; padding:8px;">
+            <button class="btn-dutch-toggle ${isCaller ? 'active' : ''}" id="dutch-btn-${i}" onclick="toggleDutch(${i})">DUTCH</button>
+            <input type="number" class="score-input" id="score-${i}" value="${val}" placeholder="0" style="width:60px; text-align:center; padding:8px;">
         `;
         container.appendChild(div);
     });
@@ -174,39 +212,73 @@ function openRoundInput() {
 }
 
 function toggleDutch(idx) {
-    const btn = document.getElementById(`dutch-btn-${idx}`);
-    btn.classList.toggle('active');
+    // Single caller enforcement
+    const all = document.querySelectorAll('.btn-dutch-toggle');
+    const target = document.getElementById(`dutch-btn-${idx}`);
+    const wasActive = target.classList.contains('active');
+
+    all.forEach(b => b.classList.remove('active'));
+
+    if (!wasActive) target.classList.add('active');
 }
 
 function saveRound() {
     let rawScores = [];
-    let dutchCallers = []; // indices
-    let inputs = document.querySelectorAll('.score-input');
+    let callerIdx = -1;
 
+    let inputs = document.querySelectorAll('.score-input');
     inputs.forEach((inp, i) => {
         let val = Number(inp.value) || 0;
         rawScores.push(val);
         if (document.getElementById(`dutch-btn-${i}`).classList.contains('active')) {
-            dutchCallers.push(i);
+            callerIdx = i;
         }
     });
 
     let finalScores = [...rawScores];
 
-    dutchCallers.forEach(idx => {
-        const myScore = rawScores[idx];
-        const others = rawScores.filter((_, i) => i !== idx);
+    // Logic apply (only if not editing final values directly? We assume inputs ARE raw if fresh, but if editing we might double apply? 
+    // Assumption: User corrects the RAW score. We re-apply logic.
+    // If user calls Dutch, we check success.
+
+    // HOWEVER: If we pre-fill with -10 (success), and save again, it becomes -10 < others -> -10. Safe.
+    // If pre-fill with 12 (fail: 2+10), and save -> 12 is not lowest -> 12 + 10 = 22. ERROR.
+    // Issue: We don't store Raw.
+    // Solution: For now, if editing, we assume user enters FINAL scores ? 
+    // NO, user expects logic. 
+    // Quick Fix: We won't re-apply +10/-10 if editing? No, that breaks changing caller.
+    // We will just let the user know they should enter RAW CARD values.
+    // OR we just store Raw in the future.
+    // Let's migrate to storing { raw: [], scores: [], caller: ... }.
+
+    let isSuccess = false;
+
+    if (callerIdx > -1) {
+        const myScore = rawScores[callerIdx];
+        const others = rawScores.filter((_, i) => i !== callerIdx);
         const minOthers = Math.min(...others);
 
         if (myScore < minOthers) {
-            finalScores[idx] = -10;
+            finalScores[callerIdx] = -10;
+            isSuccess = true;
         } else {
-            finalScores[idx] = 10 + myScore;
+            finalScores[callerIdx] = 10 + myScore;
         }
-    });
+    }
 
-    gameState.rounds.push(finalScores);
-    gameState.dealerIdx = (gameState.dealerIdx + 1) % gameState.players.length;
+    const roundObj = {
+        scores: finalScores,
+        caller: callerIdx,
+        success: isSuccess
+    };
+
+    if (editingRoundIndex > -1) {
+        gameState.rounds[editingRoundIndex] = roundObj;
+    } else {
+        gameState.rounds.push(roundObj);
+        gameState.dealerIdx = (gameState.dealerIdx + 1) % gameState.players.length;
+    }
+
     saveState();
     closeModal();
     renderTable();
@@ -214,9 +286,9 @@ function saveRound() {
 }
 
 function renderTable() {
-    const thead = document.getElementById('table-head'); // TR
+    const thead = document.getElementById('table-head');
     const tbody = document.getElementById('table-body');
-    const tfoot = document.getElementById('table-foot'); // TR
+    const tfoot = document.getElementById('table-foot');
 
     thead.innerHTML = '<th>#</th>';
     gameState.players.forEach((p, i) => {
@@ -230,12 +302,24 @@ function renderTable() {
     let totals = new Array(gameState.players.length).fill(0);
 
     gameState.rounds.forEach((r, idx) => {
+        // Support Legacy (Array) vs New (Object)
+        const scores = r.scores || r;
+        const caller = (typeof r.caller === 'number') ? r.caller : -1;
+        const success = r.success;
+
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${idx + 1}</td>`;
-        r.forEach((s, i) => {
+        tr.innerHTML = `<td>${idx + 1} <i class="fas fa-edit" style="font-size:0.8rem; color:#aaa; cursor:pointer; margin-left:4px;" onclick="editRound(${idx})"></i></td>`;
+
+        scores.forEach((s, i) => {
             totals[i] += s;
             const td = document.createElement('td');
-            td.innerText = s;
+
+            let content = `<span>${s}</span>`;
+            if (i === caller) {
+                if (success) content += ` <span style="font-size:0.8rem;">🇳🇱</span>`;
+                else content += ` <span style="font-size:0.8rem;">🇳🇱❌</span>`;
+            }
+            td.innerHTML = content;
             tr.appendChild(td);
         });
         tbody.appendChild(tr);

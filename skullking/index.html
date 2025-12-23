@@ -1013,6 +1013,12 @@
 
             if (names.length < 1) return showToast(t('needPirates'));
 
+            // Unique Check
+            if (new Set(names).size !== names.length) {
+                showToast("Duplicate pirate names found! Use unique names.");
+                return;
+            }
+
             const dealerRadio = document.querySelector('input[name="starting-dealer"]:checked');
             const dealerVal = dealerRadio ? parseInt(dealerRadio.value) : 0;
             const dealerIdx = (dealerVal < names.length) ? dealerVal : 0;
@@ -1226,265 +1232,355 @@
                 });
 
                 if (totalWon !== gameState.round) {
-                    showToast(`${t('roundMathError')} (${totalWon} / ${gameState.round})`);
-                    return;
+                    gameState.activePlayerIdx = 0;
+
+                    if (gameState.phase === 'betting') {
+                        gameState.phase = 'scoring';
+                        playSound('bet');
+                    } else {
+                        if (gameState.round < gameState.maxRounds) {
+                            playSound('score');
+                            gameState.round++;
+                            gameState.phase = 'betting';
+                            renderTableStructure();
+                            // Calculate totals on new round start to ensure table is fresh
+                            recalculateAllTotals();
+                            addTableRow(gameState.round);
+                        } else {
+                            playSound('score');
+                            gameState.phase = 'finished';
+                            document.getElementById('input-zone').style.display = 'none';
+                            document.getElementById('finished-game-banner').classList.remove('hidden');
+                            showRanking();
+                        }
+                    }
+                    saveState();
+                    renderWizard();
                 }
-            }
 
-            gameState.activePlayerIdx = 0;
+                function showRanking() {
+                    const list = document.getElementById('ranking-list');
+                    list.innerHTML = '';
 
-            if (gameState.phase === 'betting') {
-                gameState.phase = 'scoring';
-                playSound('bet');
-            } else {
-                if (gameState.round < gameState.maxRounds) {
-                    playSound('score');
-                    gameState.round++;
-                    gameState.phase = 'betting';
-                    renderTableStructure();
-                    // Calculate totals on new round start to ensure table is fresh
                     recalculateAllTotals();
-                    addTableRow(gameState.round);
-                } else {
-                    playSound('score');
-                    gameState.phase = 'finished';
-                    document.getElementById('input-zone').style.display = 'none';
-                    document.getElementById('finished-game-banner').classList.remove('hidden');
-                    showRanking();
-                }
-            }
-            saveState();
-            renderWizard();
-        }
+                    const sortedPlayers = [...gameState.players].sort((a, b) => b.totalScore - a.totalScore);
 
-        function showRanking() {
-            const list = document.getElementById('ranking-list');
-            list.innerHTML = '';
-
-            recalculateAllTotals();
-            const sortedPlayers = [...gameState.players].sort((a, b) => b.totalScore - a.totalScore);
-
-            sortedPlayers.forEach((p, idx) => {
-                const div = document.createElement('div');
-                div.className = `ranking-item rank-${idx + 1}`;
-                div.innerHTML = `
+                    sortedPlayers.forEach((p, idx) => {
+                        const div = document.createElement('div');
+                        div.className = `ranking-item rank-${idx + 1}`;
+                        div.innerHTML = `
                     <div class="rank-pos">${idx + 1}</div>
                     <div class="rank-name">${p.name}</div>
                     <div class="rank-score">${p.totalScore}</div>
                 `;
-                list.appendChild(div);
-            });
+                        list.appendChild(div);
+                    });
 
-            document.getElementById('ranking-modal').style.display = 'flex';
-        }
+                    document.getElementById('ranking-modal').style.display = 'flex';
+                }
 
-        function closeRanking() {
-            document.getElementById('ranking-modal').style.display = 'none';
-        }
+                function closeRanking() {
+                    document.getElementById('ranking-modal').style.display = 'none';
+                }
 
-        async function shareRanking() {
-            const target = document.getElementById('ranking-capture-area');
-            try {
-                const canvas = await html2canvas(target, { backgroundColor: '#1a1a1d', scale: 2 });
-                canvas.toBlob(async (blob) => {
-                    const file = new File([blob], 'skull-king-ranking.png', { type: 'image/png' });
-                    if (navigator.share) {
-                        try {
-                            await navigator.share({
-                                files: [file],
-                                title: 'Skull King Results',
-                                text: 'Check out the scores from our game!'
-                            });
-                        } catch (e) { console.log('Share failed', e); }
-                    } else {
-                        const a = document.createElement('a');
-                        a.href = canvas.toDataURL();
-                        a.download = 'skull-king-ranking.png';
-                        a.click();
-                    }
-                });
-            } catch (e) {
-                showToast("Error generating image");
-            }
-        }
-
-        function revertAction() {
-            if (gameState.activePlayerIdx > 0) {
-                gameState.activePlayerIdx--;
-
-                if (gameState.phase === 'scoring') {
-                    const prevPlayer = gameState.players[gameState.activePlayerIdx];
-                    const data = prevPlayer.scores[gameState.round - 1];
-                    if (data && data.won !== undefined) {
-                        gameState.tempWonValue = data.won;
-                        gameState.tempBonus = data.bonus;
+                async function shareRanking() {
+                    const target = document.getElementById('ranking-capture-area');
+                    try {
+                        const canvas = await html2canvas(target, { backgroundColor: '#1a1a1d', scale: 2 });
+                        canvas.toBlob(async (blob) => {
+                            const file = new File([blob], 'skull-king-ranking.png', { type: 'image/png' });
+                            if (navigator.share) {
+                                try {
+                                    await navigator.share({
+                                        files: [file],
+                                        title: 'Skull King Results',
+                                        text: 'Check out the scores from our game!'
+                                    });
+                                } catch (e) { console.log('Share failed', e); }
+                            } else {
+                                const a = document.createElement('a');
+                                a.href = canvas.toDataURL();
+                                a.download = 'skull-king-ranking.png';
+                                a.click();
+                            }
+                        });
+                    } catch (e) {
+                        showToast("Error generating image");
                     }
                 }
-                saveState();
-                renderWizard();
-            }
-        }
 
-        function calculateSorenScore(round, bet, won, bonus) {
-            const potential = round * 10;
-            const diff = Math.abs(bet - won);
-            let baseScore = 0;
+                function revertAction() {
+                    if (gameState.activePlayerIdx > 0) {
+                        gameState.activePlayerIdx--;
 
-            if (diff === 0) baseScore = potential;
-            else if (diff === 1) baseScore = potential / 2;
-            else baseScore = 0;
+                        if (gameState.phase === 'scoring') {
+                            const prevPlayer = gameState.players[gameState.activePlayerIdx];
+                            const data = prevPlayer.scores[gameState.round - 1];
+                            if (data && data.won !== undefined) {
+                                gameState.tempWonValue = data.won;
+                                gameState.tempBonus = data.bonus;
+                            }
+                        }
+                        saveState();
+                        renderWizard();
+                    }
+                }
 
-            return baseScore + bonus;
-        }
+                function calculateSorenScore(round, bet, won, bonus) {
+                    const potential = round * 10;
+                    const diff = Math.abs(bet - won);
+                    let baseScore = 0;
 
-        function calculateStandardScore(round, bet, won, bonus) {
-            if (bet === 0) {
-                if (won === 0) return (round * 10) + bonus;
-                return (round * -10) + bonus;
-            }
-            if (bet === won) return (bet * 20) + bonus;
-            return (Math.abs(bet - won) * -10) + bonus;
-        }
+                    if (diff === 0) baseScore = potential;
+                    else if (diff === 1) baseScore = potential / 2;
+                    else baseScore = 0;
 
-        function renderTableStructure() {
-            const thead = document.getElementById('table-head');
-            const tbody = document.getElementById('table-body');
-            const tfoot = document.getElementById('table-foot');
+                    return baseScore + bonus;
+                }
 
-            let htmlHead = `<tr><th>${t('round')}</th>`;
-            let htmlFoot = `<tr><td>${t('total')}</td>`;
+                function calculateStandardScore(round, bet, won, bonus) {
+                    if (bet === 0) {
+                        if (won === 0) return (round * 10) + bonus;
+                        return (round * -10) + bonus;
+                    }
+                    if (bet === won) return (bet * 20) + bonus;
+                    return (Math.abs(bet - won) * -10) + bonus;
+                }
 
-            const leaderIdx = (gameState.round - 1 + gameState.initialDealerIdx) % gameState.players.length;
+                function renderTableStructure() {
+                    const thead = document.getElementById('table-head');
+                    const tbody = document.getElementById('table-body');
+                    const tfoot = document.getElementById('table-foot');
 
-            gameState.players.forEach((p, idx) => {
-                const isLeader = (idx === leaderIdx) ? 'dealer-frame' : '';
-                htmlHead += `<th class="${isLeader}"><span class="dealer-icon"><i class="fas fa-crown"></i></span>${p.name.substring(0, 8)}</th>`;
-                // BUG FIX: Inject Current Total directly instead of waiting for update
-                htmlFoot += `<td id="total-p${idx}">${p.totalScore || 0}</td>`;
-            });
-            htmlHead += `</tr>`;
-            htmlFoot += `</tr>`;
+                    let htmlHead = `<tr><th>${t('round')}</th>`;
+                    let htmlFoot = `<tr><td>${t('total')}</td>`;
 
-            thead.innerHTML = htmlHead;
-            tfoot.innerHTML = htmlFoot;
+                    const leaderIdx = (gameState.round - 1 + gameState.initialDealerIdx) % gameState.players.length;
 
-            tbody.innerHTML = '';
-            for (let r = 1; r <= gameState.round; r++) {
-                addTableRow(r);
-            }
-            gameState.players.forEach((p, idx) => {
-                p.scores.forEach((s, rIdx) => {
-                    if (rIdx < gameState.round) updateScoreCell(idx, rIdx + 1, s);
-                });
-            });
-        }
+                    gameState.players.forEach((p, idx) => {
+                        const isLeader = (idx === leaderIdx) ? 'dealer-frame' : '';
+                        htmlHead += `<th class="${isLeader}"><span class="dealer-icon"><i class="fas fa-crown"></i></span>${p.name.substring(0, 8)}</th>`;
+                        // BUG FIX: Inject Current Total directly instead of waiting for update
+                        htmlFoot += `<td id="total-p${idx}">${p.totalScore || 0}</td>`;
+                    });
+                    htmlHead += `</tr>`;
+                    htmlFoot += `</tr>`;
 
-        function addTableRow(roundNum) {
-            const tbody = document.getElementById('table-body');
-            if (document.getElementById(`row-r${roundNum}`)) return;
+                    thead.innerHTML = htmlHead;
+                    tfoot.innerHTML = htmlFoot;
 
-            const tr = document.createElement('tr');
-            tr.id = `row-r${roundNum}`;
+                    tbody.innerHTML = '';
+                    for (let r = 1; r <= gameState.round; r++) {
+                        addTableRow(r);
+                    }
+                    gameState.players.forEach((p, idx) => {
+                        p.scores.forEach((s, rIdx) => {
+                            if (rIdx < gameState.round) updateScoreCell(idx, rIdx + 1, s);
+                        });
+                    });
+                }
 
-            let html = `<td>${roundNum}</td>`;
-            gameState.players.forEach((p, idx) => {
-                html += `<td id="cell-r${roundNum}-p${idx}">
+                function addTableRow(roundNum) {
+                    const tbody = document.getElementById('table-body');
+                    if (document.getElementById(`row-r${roundNum}`)) return;
+
+                    const tr = document.createElement('tr');
+                    tr.id = `row-r${roundNum}`;
+
+                    let html = `<td>${roundNum}</td>`;
+                    gameState.players.forEach((p, idx) => {
+                        html += `<td id="cell-r${roundNum}-p${idx}">
                     <span class="cell-bet"></span>
                     <span class="cell-score"></span>
                 </td>`;
-            });
-            tr.innerHTML = html;
-            tbody.appendChild(tr);
+                    });
+                    tr.innerHTML = html;
+                    tbody.appendChild(tr);
 
-            const container = document.getElementById('scoreboard-container');
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function generateVisuals(bet, won) {
-            if (bet === 0) {
-                let html = '<div class="visual-score">';
-                if (won > 0) {
-                    for (let i = 0; i < won; i++) html += '<div class="box over"></div>';
-                } else {
-                    html += '<span class="zero-dash">-</span>';
+                    const container = document.getElementById('scoreboard-container');
+                    container.scrollTop = container.scrollHeight;
                 }
-                html += '</div>';
-                return html;
-            }
 
-            let html = '<div class="visual-score">';
-            const count = Math.max(bet, (won || 0));
-
-            for (let i = 0; i < count; i++) {
-                if (won === undefined || won === null) {
-                    html += '<div class="box empty"></div>';
-                } else {
-                    if (i < bet && i < won) {
-                        html += '<div class="box filled"></div>';
-                    } else if (i < bet && i >= won) {
-                        html += '<div class="box empty"></div>';
-                    } else if (i >= bet && i < won) {
-                        html += '<div class="box over"></div>';
+                function generateVisuals(bet, won) {
+                    if (bet === 0) {
+                        let html = '<div class="visual-score">';
+                        if (won > 0) {
+                            for (let i = 0; i < won; i++) html += '<div class="box over"></div>';
+                        } else {
+                            html += '<span class="zero-dash">-</span>';
+                        }
+                        html += '</div>';
+                        return html;
                     }
-                }
-            }
-            html += '</div>';
-            return html;
-        }
 
-        function updateScoreCell(pIdx, rIdx, data) {
-            const cell = document.getElementById(`cell-r${rIdx}-p${pIdx}`);
-            if (!cell) return;
+                    let html = '<div class="visual-score">';
+                    const count = Math.max(bet, (won || 0));
 
-            let visualHTML = '';
-            if (data.bet !== undefined && data.bet !== null) {
-                visualHTML = generateVisuals(data.bet, data.won);
-            }
-
-            const scoreDisplay = (data.points !== undefined) ? data.points : '';
-
-            let color = '#fff';
-            if (data.points !== undefined) {
-                if (data.points >= 0) {
-                    if (data.won !== undefined && data.bet === data.won) {
-                        color = 'var(--gold)';
-                    } else {
-                        color = 'var(--gold-dim)';
+                    for (let i = 0; i < count; i++) {
+                        if (won === undefined || won === null) {
+                            html += '<div class="box empty"></div>';
+                        } else {
+                            if (i < bet && i < won) {
+                                html += '<div class="box filled"></div>';
+                            } else if (i < bet && i >= won) {
+                                html += '<div class="box empty"></div>';
+                            } else if (i >= bet && i < won) {
+                                html += '<div class="box over"></div>';
+                            }
+                        }
                     }
-                } else {
-                    color = '#888';
+                    html += '</div>';
+                    return html;
                 }
-            }
 
-            cell.innerHTML = `
+                function updateScoreCell(pIdx, rIdx, data) {
+                    const cell = document.getElementById(`cell-r${rIdx}-p${pIdx}`);
+                    if (!cell) return;
+
+                    let visualHTML = '';
+                    if (data.bet !== undefined && data.bet !== null) {
+                        visualHTML = generateVisuals(data.bet, data.won);
+                    }
+
+                    const scoreDisplay = (data.points !== undefined) ? data.points : '';
+
+                    let color = '#fff';
+                    if (data.points !== undefined) {
+                        if (data.points >= 0) {
+                            if (data.won !== undefined && data.bet === data.won) {
+                                color = 'var(--gold)';
+                            } else {
+                                color = 'var(--gold-dim)';
+                            }
+                        } else {
+                            color = '#888';
+                        }
+                    }
+
+                    cell.innerHTML = `
                 ${visualHTML}
                 <span class="cell-score" style="color:${color}">${scoreDisplay}</span>
             `;
-        }
+                }
 
-        function updateTotals() {
-            gameState.players.forEach((p, idx) => {
-                const cell = document.getElementById(`total-p${idx}`);
-                if (cell) cell.innerText = p.totalScore;
-            });
-        }
+                function updateTotals() {
+                    gameState.players.forEach((p, idx) => {
+                        const cell = document.getElementById(`total-p${idx}`);
+                        if (cell) cell.innerText = p.totalScore;
+                    });
+                }
 
-        function highlightActiveRow() {
-            document.querySelectorAll('tr').forEach(tr => tr.classList.remove('active-round'));
-            const row = document.getElementById(`row-r${gameState.round}`);
-            if (row) row.classList.add('active-round');
-        }
+                function highlightActiveRow() {
+                    document.querySelectorAll('tr').forEach(tr => tr.classList.remove('active-round'));
+                    const row = document.getElementById(`row-r${gameState.round}`);
+                    if (row) row.classList.add('active-round');
+                }
 
-        function showRules() {
-            document.getElementById('rules-modal').style.display = 'flex';
-        }
-        function closeRules(e) {
-            if (e.target.id === 'rules-modal') e.target.style.display = 'none';
-        }
+                function showRules() {
+                    document.getElementById('rules-modal').style.display = 'flex';
+                }
+                function closeRules(e) {
+                    if (e.target.id === 'rules-modal') e.target.style.display = 'none';
+                }
 
-        window.onload = init;
+                // EDIT LOGIC
+                let editingRoundIdx = -1;
+
+                function openEditRound(idx) {
+                    editingRoundIdx = idx;
+                    const roundData = gameState.rounds[idx];
+                    const modal = document.getElementById('edit-modal');
+                    const list = document.getElementById('edit-list');
+                    document.getElementById('edit-round-num').innerText = idx + 1;
+
+                    list.innerHTML = '';
+
+                    // For SK, we need Bet, Tricks, Bonus for each player
+                    // TABLE Header
+                    const table = document.createElement('table');
+                    table.innerHTML = `
+                <tr>
+                    <th style="background:#222;">Pirate</th>
+                    <th style="background:#222;">Bet</th>
+                    <th style="background:#222;">Won</th>
+                    <th style="background:#222;">Bonus</th>
+                </tr>
+            `;
+
+                    gameState.players.forEach((p, i) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                    <td style="text-align:left; padding:5px;">${p}</td>
+                    <td><input type="number" id="edit-bet-${i}" value="${roundData.bets[i]}" style="width:50px; text-align:center; color:black;"></td>
+                    <td><input type="number" id="edit-won-${i}" value="${roundData.tricks[i]}" style="width:50px; text-align:center; color:black;"></td>
+                    <td><input type="number" id="edit-bonus-${i}" value="${roundData.bonus[i] || 0}" step="10" style="width:60px; text-align:center; color:black;"></td>
+                `;
+                        table.appendChild(tr);
+                    });
+
+                    list.appendChild(table);
+                    modal.style.display = 'flex';
+                }
+
+                function saveEditedRound() {
+                    const bets = [];
+                    const tricks = [];
+                    const bonus = [];
+
+                    // Validate: Tricks sum == Round Num
+                    // Actually, we trust the edit, but maybe warn? 
+                    // Better to enforce.
+                    let tricksSum = 0;
+                    const roundNum = editingRoundIdx + 1;
+
+                    for (let i = 0; i < gameState.players.length; i++) {
+                        bets.push(Number(document.getElementById(`edit-bet-${i}`).value));
+                        const w = Number(document.getElementById(`edit-won-${i}`).value);
+                        tricks.push(w);
+                        bonus.push(Number(document.getElementById(`edit-bonus-${i}`).value));
+                        tricksSum += w;
+                    }
+
+                    if (tricksSum !== roundNum) {
+                        alert(`Total tricks won (${tricksSum}) must equal Round Number (${roundNum})!`);
+                        return;
+                    }
+
+                    // Calculate Scores
+                    const scores = [];
+                    for (let i = 0; i < gameState.players.length; i++) {
+                        scores.push(calculateScore(bets[i], tricks[i], roundNum, bonus[i]));
+                    }
+
+                    // Update State
+                    gameState.rounds[editingRoundIdx] = {
+                        bets: bets,
+                        tricks: tricks,
+                        bonus: bonus,
+                        scores: scores
+                    };
+
+                    saveGame();
+                    document.getElementById('edit-modal').style.display = 'none';
+                    renderTable();
+                }
+
+                window.onload = init;
 
     </script>
+    <!-- Edit Round Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h2>Edit Round <span id="edit-round-num"></span></h2>
+            <div id="edit-list"></div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn-confirm" onclick="saveEditedRound()">Save Changes</button>
+                <button class="btn-revert"
+                    onclick="document.getElementById('edit-modal').style.display='none'">Cancel</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
