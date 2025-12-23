@@ -256,13 +256,23 @@ function saveRound() {
     if (callerIdx > -1) {
         const myScore = rawScores[callerIdx];
         const others = rawScores.filter((_, i) => i !== callerIdx);
-        const minOthers = Math.min(...others);
+        // Safety check if playing alone (debug)
+        if (others.length > 0) {
+            const minOthers = Math.min(...others);
 
-        if (myScore < minOthers) {
-            finalScores[callerIdx] = -10;
-            isSuccess = true;
-        } else {
-            finalScores[callerIdx] = 10 + myScore;
+            if (myScore < minOthers) {
+                // Strictly Lowest -> Success (-10)
+                finalScores[callerIdx] = -10;
+                isSuccess = true;
+            } else if (myScore === minOthers) {
+                // Tied -> Neutral (Keep raw score)
+                finalScores[callerIdx] = myScore;
+                isSuccess = false; // "Failed" to win bonus, but no penalty
+            } else {
+                // Not Lowest -> Fail (Score + 10)
+                finalScores[callerIdx] = 10 + myScore;
+                isSuccess = false;
+            }
         }
     }
 
