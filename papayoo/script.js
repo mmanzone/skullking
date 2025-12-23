@@ -36,10 +36,18 @@ const I18N = {
             <p><strong>But :</strong> Faire le MOINS de points possible.</p>
             <p><strong>Papayoo :</strong> Le 7 de la couleur du dé vaut 40 points.</p>
             <p><strong>Les Payoo :</strong> Les cartes Payoo (1-20) valent leur propre valeur.</p>
-            <p><strong>Écart (Donne la gauche) :</strong><br>
-            3-4 joueurs : 5 cartes<br>
-            5 joueurs : 4 cartes<br>
-            6+ joueurs : 3 cartes</p>
+            
+            <table style='width:100%; border-collapse:collapse; margin-top:10px; font-size:0.9rem;'>
+                <tr style='border-bottom:1px solid #aaa;'>
+                    <th style='text-align:left; padding:5px;'>Joueurs</th>
+                    <th style='text-align:center;'>Distribuées</th>
+                    <th style='text-align:center;'>Écart (Gauche)</th>
+                </tr>
+                <tr><td>3 Joueurs</td><td style='text-align:center;'>20</td><td style='text-align:center;'>5</td></tr>
+                <tr><td>4 Joueurs</td><td style='text-align:center;'>15</td><td style='text-align:center;'>5</td></tr>
+                <tr><td>5 Joueurs</td><td style='text-align:center;'>12</td><td style='text-align:center;'>4</td></tr>
+                <tr><td>6 Joueurs</td><td style='text-align:center;'>10</td><td style='text-align:center;'>3</td></tr>
+            </table>
         `
     },
     en: {
@@ -69,10 +77,18 @@ const I18N = {
             <p><strong>Goal:</strong> Get the LOWEST score.</p>
             <p><strong>Papayoo:</strong> The 7 of the dice suit is worth 40 points.</p>
             <p><strong>The Payoos:</strong> Payoo cards (1-20) are worth their face value.</p>
-            <p><strong>Passing (Left):</strong><br>
-            3-4 players: 5 cards<br>
-            5 players: 4 cards<br>
-            6+ players: 3 cards</p>
+            
+            <table style='width:100%; border-collapse:collapse; margin-top:10px; font-size:0.9rem;'>
+                <tr style='border-bottom:1px solid #aaa;'>
+                    <th style='text-align:left; padding:5px;'>Players</th>
+                    <th style='text-align:center;'>Dealt</th>
+                    <th style='text-align:center;'>Pass (Left)</th>
+                </tr>
+                <tr><td>3 Players</td><td style='text-align:center;'>20</td><td style='text-align:center;'>5</td></tr>
+                <tr><td>4 Players</td><td style='text-align:center;'>15</td><td style='text-align:center;'>5</td></tr>
+                <tr><td>5 Players</td><td style='text-align:center;'>12</td><td style='text-align:center;'>4</td></tr>
+                <tr><td>6 Players</td><td style='text-align:center;'>10</td><td style='text-align:center;'>3</td></tr>
+            </table>
         `
     }
 };
@@ -111,6 +127,16 @@ function init() {
         renderSetup();
     }
     updateUIText();
+
+    // Global ESC listener for modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "Escape") {
+            closeFinalModal();
+            closeModal(); // round input
+            document.getElementById('rules-modal').classList.remove('visible');
+            document.getElementById('warning-modal').classList.remove('visible');
+        }
+    });
 }
 
 function showWarnUI(msg) {
@@ -282,11 +308,6 @@ function saveRoundScores() {
 
     if (sum !== MAX_POINTS) {
         showWarnUI(t('warn_math').replace('#', sum));
-        // Requirement didn't strictly say BLOCK if invalid, just warning. 
-        // "warning message should be an inline modal". 
-        // I will assume it blocks progress until fixed or ignored, but using the modal as the blocker.
-        // If I want to allow bypass, I'd need a "Force Save" button on the warning. 
-        // For safety, let's block.
         return;
     }
 
@@ -390,6 +411,16 @@ function showFinalRanking() {
     if (audio) {
         audio.loop = true;
         audio.play().catch(() => { });
+    }
+}
+
+function closeFinalModal() {
+    document.getElementById('ranking-modal').classList.remove('visible');
+    const audio = document.getElementById('sfx-papayou');
+    if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.loop = false;
     }
 }
 
