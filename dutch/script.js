@@ -290,6 +290,13 @@ function closeModal() {
     document.getElementById('round-modal').classList.remove('visible');
 }
 
+function resetGame() {
+    if (confirm("Reset Game?")) {
+        localStorage.removeItem('dutch_state');
+        location.reload();
+    }
+}
+
 function saveState() {
     localStorage.setItem('dutch_state', JSON.stringify(gameState));
 }

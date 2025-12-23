@@ -253,6 +253,11 @@
         Fait maison pour les vacances
     </div>
 
+    <!-- Audio Preload -->
+    <audio id="sfx-skull" src="skull.mp3"></audio>
+    <audio id="sfx-papayoo" src="papayou.mp3"></audio>
+    <audio id="sfx-dutch" src="dutch.mp3"></audio>
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
         <div class="modal-content">
@@ -311,6 +316,32 @@
             // Apply language
             setLang(curLang);
             document.getElementById('default-lang-select').value = settings.defaultLang;
+
+            // Setup Audio Click Listeners
+            setupAudioLink('skullking/index.html', 'sfx-skull');
+            setupAudioLink('papayoo/index.html', 'sfx-papayoo');
+            setupAudioLink('dutch/index.html', 'sfx-dutch');
+        }
+
+        function setupAudioLink(href, audioId) {
+            // Find link with this href to attach listener
+            // (Selectors are slightly tricky since href might be absolute vs relative, but 'a[href$="..."]' works)
+            let link = document.querySelector(`a[href="${href}"]`);
+            if (link) {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const audio = document.getElementById(audioId);
+                    if (audio) {
+                        // Play sound, wait 800ms, then go
+                        audio.play().catch(err => console.log('Audio play failed', err));
+                        setTimeout(() => {
+                            window.location.href = href;
+                        }, 800);
+                    } else {
+                        window.location.href = href;
+                    }
+                });
+            }
         }
 
         function setLang(lang) {
