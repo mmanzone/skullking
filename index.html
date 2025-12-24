@@ -74,10 +74,14 @@
 
         .game-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(2, minmax(150px, 220px));
+            /* Max 2 cols, reduced max-width (~280 -> 220) */
             gap: 20px;
             width: 100%;
-            max-width: 1000px;
+            justify-content: center;
+            /* Center the grid */
+            max-width: 600px;
+            /* Constrain container */
         }
 
         .game-card {

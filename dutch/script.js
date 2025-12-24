@@ -326,8 +326,8 @@ function renderTable() {
 
             let content = `<span>${s}</span>`;
             if (i === caller) {
-                if (success) content += ` <span style="font-size:0.8rem;">🇳🇱</span>`;
-                else content += ` <span style="font-size:0.8rem;">🇳🇱❌</span>`;
+                if (success) content += ` <span style="font-size:1.2rem;" title="Success">🌷</span>`;
+                else content += ` <span style="font-size:1.2rem;" title="Fail">☠️</span>`;
             }
             td.innerHTML = content;
             tr.appendChild(td);

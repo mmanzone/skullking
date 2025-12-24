@@ -1,13 +1,14 @@
 :root {
-    --bg-color: #f0f4f8;
-    /* Light blue-grey modern bg */
-    --text-color: #2c3e50;
-    --primary: #3498db;
-    /* Soft Blue */
-    --secondary: #e74c3c;
-    /* Red for Dutch call */
-    --accent: #2ecc71;
-    /* Green for success */
+    --bg-color: #F0F8FF;
+    /* Alice Blue */
+    --text-color: #1E3765;
+    /* Dark Blue */
+    --primary: #F68616;
+    /* Dutch Orange */
+    --secondary: #1E3765;
+    /* Dark Blue */
+    --accent: #e74c3c;
+    /* Red remains for contrast */
     --card-bg: #fff;
     --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
