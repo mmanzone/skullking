@@ -33,13 +33,14 @@ const I18N = {
         valid_same_players: "Rejouer (Mêmes Joueurs)",
         who_papayoo: "Qui a pris le Papayoo ?",
         papayoo_alert: "Attention Papayoo !",
-        dice_label: "Papayoo (M #)",
+        dice_label: "Papayoo (Manche #)",
         btn_papayoo: "7 # Papayoo !!",
         warn_dice: "Pas de couleur Papayoo sélectionnée !",
         warn_players: "Il faut au moins 3 joueurs !",
         warn_auto: "Il doit y avoir exactement un champ vide pour utiliser le calcul automatique !",
         warn_math: "Le total est de # (attendu 250).",
         confirm_reset: "Tout effacer ?",
+        show_final: "Scores finaux",
         rules: `
             <p><strong>But :</strong> Faire le MOINS de points possible.</p>
             <p><strong>Papayoo :</strong> Le 7 de la couleur du dé vaut 40 points.</p>
@@ -293,6 +294,13 @@ function openRoundInput() {
         showWarnUI(t('warn_dice'));
         return;
     }
+    // Validate Papayoo assignment
+    if (tempCarlosIdx === -1) {
+        showWarnUI(t('who_papayoo')); // Reuse string or new one? User said "Return an error". "Qui a pris le Papayoo ?" works as error msg too? Or "Please select who got Papayoo".
+        // Let's use a clear error.
+        showWarnUI(curLang === 'fr' ? "Veuillez désigner le joueur qui a pris le Papayoo !" : "Please select the player who took the Papayoo!");
+        return;
+    }
     _openModal();
 }
 
@@ -326,39 +334,7 @@ function _openModal(scores = null) {
     updateHud();
 }
 
-function updateHud() {
-    const inputs = document.querySelectorAll('.score-input');
-    let sum = 0;
-    inputs.forEach(i => sum += Number(i.value) || 0);
-
-    const hud = document.getElementById('score-hud');
-    hud.innerText = `Total: ${sum} / ${MAX_POINTS}`;
-
-    if (sum === MAX_POINTS) {
-        hud.style.color = 'var(--accent-green)';
-    } else {
-        hud.style.color = '#e74c3c';
-    }
-}
-
-function fillMissingScore() {
-    const inputs = Array.from(document.querySelectorAll('.score-input'));
-    const emptyInputs = inputs.filter(i => i.value === '');
-
-    if (emptyInputs.length !== 1) {
-        showWarnUI(t('warn_auto'));
-        return;
-    }
-
-    let currentSum = 0;
-    inputs.forEach(i => {
-        if (i.value !== '') currentSum += Number(i.value);
-    });
-
-    const remaining = MAX_POINTS - currentSum;
-    emptyInputs[0].value = remaining;
-    updateHud();
-}
+// ... updateHud ... fillMissingScore ...
 
 function saveRoundScores() {
     const inputs = document.querySelectorAll('.score-input');
@@ -374,6 +350,24 @@ function saveRoundScores() {
     if (sum !== MAX_POINTS) {
         showWarnUI(t('warn_math').replace('#', sum));
         return;
+    }
+
+    // Check Papayoo >= 40
+    // Determine who has Papayoo:
+    // If editing, prioritize new selection (tempCarlosIdx) if made, else existing. 
+    // If creating, tempCarlosIdx.
+    let victimIdx = -1;
+    if (editingRoundIdx > -1) {
+        victimIdx = (tempCarlosIdx > -1) ? tempCarlosIdx : (gameState.rounds[editingRoundIdx].carlos !== undefined ? gameState.rounds[editingRoundIdx].carlos : -1);
+    } else {
+        victimIdx = tempCarlosIdx;
+    }
+
+    if (victimIdx > -1) {
+        if (scores[victimIdx] < 40) {
+            showWarnUI(curLang === 'fr' ? "Le joueur avec le Papayoo doit avoir au moins 40 points !" : "The player with the Papayoo must have at least 40 points!");
+            return;
+        }
     }
 
     if (editingRoundIdx > -1) {
@@ -401,15 +395,11 @@ function saveRoundScores() {
 
 function checkEndGameBtn() {
     const btn = document.getElementById('btn-final-score');
-    if (gameState.rounds.length >= gameState.players.length) { // Or some logical limit?
-        // Actually Papayoo usually matches rounds to players or fixed. Original code: rounds >= players
+    // Strict condition: rounds >= players
+    if (gameState.rounds.length >= gameState.players.length) {
         btn.style.display = 'block';
     } else {
-        // Allow showing anytime really? But original hidden it.
-        // Let's keep existing logic or maybe show if > 0?
-        // User didn't ask to change this logic, just buttons inside modal.
-        btn.style.display = 'block'; // Let's make it always visible if at least 1 round?
-        if (gameState.rounds.length === 0) btn.style.display = 'none';
+        btn.style.display = 'none';
     }
 }
 
