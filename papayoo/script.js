@@ -33,6 +33,8 @@ const I18N = {
         valid_same_players: "Rejouer (Mêmes Joueurs)",
         who_papayoo: "Qui a pris le Papayoo ?",
         papayoo_alert: "Attention Papayoo !",
+        dice_label: "Papayoo (M #)",
+        btn_papayoo: "7 # Papayoo !!",
         warn_dice: "Pas de couleur Papayoo sélectionnée !",
         warn_players: "Il faut au moins 3 joueurs !",
         warn_auto: "Il doit y avoir exactement un champ vide pour utiliser le calcul automatique !",
@@ -257,10 +259,13 @@ function openCarlosModal() {
 
     gameState.players.forEach((p, i) => {
         const btn = document.createElement('button');
-        btn.className = 'btn-secondary';
+        // Use btn-main for high visibility, but maybe a variant if we want distinctness?
+        // User asked for "same style as 'enter score'". 'enter score' is usually the big main button.
+        btn.className = 'btn-main';
         btn.innerText = p;
-        btn.style.border = "1px solid #ccc";
-        btn.style.width = "100%";
+        btn.style.margin = "5px 0"; // Add spacing
+        btn.style.padding = "10px"; // Ensure touch target
+        btn.style.fontSize = "1rem";
         btn.onclick = () => selectCarlos(i);
         list.appendChild(btn);
     });
@@ -434,10 +439,13 @@ function renderScoreTable() {
             totals[pIdx] += s;
             const td = document.createElement('td');
 
-            let content = `<span>${s}</span>`;
+            let content = "";
+            // Icon Left
             if (pIdx === carlosIdx) {
-                content += `<br><img src="carlos.png" style="width:24px; height:auto; vertical-align:middle; margin-top:2px;" title="Got the Papayoo!">`;
+                content += `<img src="carlos.png" style="width:24px; height:auto; vertical-align:middle; margin-right:5px;" title="Got the Papayoo!"> `;
             }
+            content += `<span>${s}</span>`;
+
             td.innerHTML = content;
             tr.appendChild(td);
         });
@@ -451,6 +459,19 @@ function renderScoreTable() {
         tfoot.appendChild(td);
     });
     return totals;
+}
+
+function updateDiceLabel() {
+    const roundNum = (editingRoundIdx > -1) ? (editingRoundIdx + 1) : (gameState.rounds.length + 1);
+    let label = t('dice_label').replace('#', roundNum);
+    document.getElementById('dice-label').innerText = label;
+
+    let btnText = "Papayoo !";
+    if (gameState.activePapayooColor) {
+        btnText = t('btn_papayoo').replace('#', gameState.activePapayooColor);
+    }
+    // Add Carlos Icon to button
+    document.getElementById('btn-papayou-action').innerHTML = `${btnText} <img src="carlos.png" style="height:24px; vertical-align:middle; margin-left:5px;">`;
 }
 
 function showFinalRanking() {
