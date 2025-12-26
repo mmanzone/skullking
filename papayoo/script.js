@@ -41,6 +41,7 @@ const I18N = {
         warn_math: "Le total est de # (attendu 250).",
         confirm_reset: "Tout effacer ?",
         show_final: "Scores finaux",
+        auto_complete: "Compléter Auto",
         rules: `
             <p><strong>But :</strong> Faire le MOINS de points possible.</p>
             <p><strong>Papayoo :</strong> Le 7 de la couleur du dé vaut 40 points.</p>
@@ -318,13 +319,27 @@ function _openModal(scores = null) {
     const container = document.getElementById('modal-inputs');
     document.getElementById('modal-round-num').innerText = (editingRoundIdx > -1) ? (editingRoundIdx + 1) : (gameState.rounds.length + 1);
 
+    // Determine victim for display
+    let victimIdx = -1;
+    if (editingRoundIdx > -1) {
+        victimIdx = (tempCarlosIdx > -1) ? tempCarlosIdx : (gameState.rounds[editingRoundIdx].carlos !== undefined ? gameState.rounds[editingRoundIdx].carlos : -1);
+    } else {
+        victimIdx = tempCarlosIdx;
+    }
+
     container.innerHTML = '';
     gameState.players.forEach((p, i) => {
         const val = scores ? scores[i] : '';
         const div = document.createElement('div');
         div.className = 'score-input-row';
+
+        let labelContent = p;
+        if (i === victimIdx) {
+            labelContent += ` <img src="carlos.png" style="height:20px; vertical-align:middle;" title="Papayoo">`;
+        }
+
         div.innerHTML = `
-            <label>${p}</label>
+            <label>${labelContent}</label>
             <input type="number" class="score-input" data-idx="${i}" value="${val}" oninput="updateHud()">
         `;
         container.appendChild(div);
@@ -334,7 +349,39 @@ function _openModal(scores = null) {
     updateHud();
 }
 
-// ... updateHud ... fillMissingScore ...
+function updateHud() {
+    const inputs = document.querySelectorAll('.score-input');
+    let sum = 0;
+    inputs.forEach(i => sum += Number(i.value) || 0);
+
+    const hud = document.getElementById('score-hud');
+    hud.innerText = `Total: ${sum} / ${MAX_POINTS}`;
+
+    if (sum === MAX_POINTS) {
+        hud.style.color = 'var(--accent-green)';
+    } else {
+        hud.style.color = '#e74c3c';
+    }
+}
+
+function fillMissingScore() {
+    const inputs = Array.from(document.querySelectorAll('.score-input'));
+    const emptyInputs = inputs.filter(i => i.value === '');
+
+    if (emptyInputs.length !== 1) {
+        showWarnUI(t('warn_auto'));
+        return;
+    }
+
+    let currentSum = 0;
+    inputs.forEach(i => {
+        if (i.value !== '') currentSum += Number(i.value);
+    });
+
+    const remaining = MAX_POINTS - currentSum;
+    emptyInputs[0].value = remaining;
+    updateHud();
+}
 
 function saveRoundScores() {
     const inputs = document.querySelectorAll('.score-input');
