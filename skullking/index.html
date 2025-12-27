@@ -1438,7 +1438,7 @@
             const tr = document.createElement('tr');
             tr.id = `row-r${roundNum}`;
 
-            let html = `<td>${roundNum}</td>`;
+            let html = `<td>${roundNum} <i class="fas fa-edit" style="cursor:pointer; opacity:0.5; font-size:0.8em; margin-left:5px;" onclick="openEditRound(${roundNum - 1})"></i></td>`;
             gameState.players.forEach((p, idx) => {
                 html += `<td id="cell-r${roundNum}-p${idx}">
                     <span class="cell-bet"></span>
@@ -1539,19 +1539,18 @@
 
         function openEditRound(idx) {
             editingRoundIdx = idx;
-            const roundData = gameState.rounds[idx];
+            const roundNum = idx + 1;
             const modal = document.getElementById('edit-modal');
             const list = document.getElementById('edit-list');
-            document.getElementById('edit-round-num').innerText = idx + 1;
+            document.getElementById('edit-round-num').innerText = roundNum;
 
             list.innerHTML = '';
 
-            // For SK, we need Bet, Tricks, Bonus for each player
-            // TABLE Header
             const table = document.createElement('table');
+            table.style.width = '100%';
             table.innerHTML = `
                 <tr>
-                    <th style="background:#222;">Pirate</th>
+                    <th style="background:#222; text-align:left;">Pirate</th>
                     <th style="background:#222;">Bet</th>
                     <th style="background:#222;">Won</th>
                     <th style="background:#222;">Bonus</th>
@@ -1559,12 +1558,17 @@
             `;
 
             gameState.players.forEach((p, i) => {
+                const s = p.scores[idx] || {};
+                const betVal = s.bet !== undefined ? s.bet : '';
+                const wonVal = s.won !== undefined ? s.won : '';
+                const bonusVal = s.bonus !== undefined ? s.bonus : 0;
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="text-align:left; padding:5px;">${p}</td>
-                    <td><input type="number" id="edit-bet-${i}" value="${roundData.bets[i]}" style="width:50px; text-align:center; color:black;"></td>
-                    <td><input type="number" id="edit-won-${i}" value="${roundData.tricks[i]}" style="width:50px; text-align:center; color:black;"></td>
-                    <td><input type="number" id="edit-bonus-${i}" value="${roundData.bonus[i] || 0}" step="10" style="width:60px; text-align:center; color:black;"></td>
+                    <td style="text-align:left; padding:5px;">${p.name}</td>
+                    <td><input type="number" id="edit-bet-${i}" value="${betVal}" style="width:50px; text-align:center; color:black;"></td>
+                    <td><input type="number" id="edit-won-${i}" value="${wonVal}" style="width:50px; text-align:center; color:black;"></td>
+                    <td><input type="number" id="edit-bonus-${i}" value="${bonusVal}" step="10" style="width:60px; text-align:center; color:black;"></td>
                 `;
                 table.appendChild(tr);
             });
@@ -1574,46 +1578,57 @@
         }
 
         function saveEditedRound() {
-            const bets = [];
-            const tricks = [];
-            const bonus = [];
-
-            // Validate: Tricks sum == Round Num
-            // Actually, we trust the edit, but maybe warn? 
-            // Better to enforce.
-            let tricksSum = 0;
             const roundNum = editingRoundIdx + 1;
+            let tricksSum = 0;
+
+            const newScores = [];
 
             for (let i = 0; i < gameState.players.length; i++) {
-                bets.push(Number(document.getElementById(`edit-bet-${i}`).value));
-                const w = Number(document.getElementById(`edit-won-${i}`).value);
-                tricks.push(w);
-                bonus.push(Number(document.getElementById(`edit-bonus-${i}`).value));
-                tricksSum += w;
+                const betInput = document.getElementById(`edit-bet-${i}`).value;
+                const wonInput = document.getElementById(`edit-won-${i}`).value;
+                const bonusInput = document.getElementById(`edit-bonus-${i}`).value;
+
+                const bet = betInput !== '' ? parseInt(betInput) : undefined;
+                const won = wonInput !== '' ? parseInt(wonInput) : undefined;
+                const bonus = bonusInput !== '' ? parseInt(bonusInput) : 0;
+
+                if (won !== undefined) {
+                    tricksSum += won;
+                }
+
+                const scoreData = { bet, won, bonus };
+                
+                if (bet !== undefined && won !== undefined) {
+                    if (gameState.useSorenRule) {
+                        scoreData.points = calculateSorenScore(roundNum, bet, won, bonus);
+                    } else {
+                        scoreData.points = calculateStandardScore(roundNum, bet, won, bonus);
+                    }
+                } else {
+                    scoreData.points = undefined; 
+                }
+                newScores.push(scoreData);
             }
 
-            if (tricksSum !== roundNum) {
-                alert(`Total tricks won (${tricksSum}) must equal Round Number (${roundNum})!`);
-                return;
+            const allWonDefined = newScores.every(s => s.won !== undefined);
+            
+            if (allWonDefined) {
+                if (tricksSum !== roundNum) {
+                     if (!confirm(`Total tricks won (${tricksSum}) does not equal Round Number (${roundNum}).\n\nSave anyway?`)) {
+                         return;
+                     }
+                }
             }
 
-            // Calculate Scores
-            const scores = [];
-            for (let i = 0; i < gameState.players.length; i++) {
-                scores.push(calculateScore(bets[i], tricks[i], roundNum, bonus[i]));
-            }
+            gameState.players.forEach((p, i) => {
+                p.scores[editingRoundIdx] = newScores[i];
+                updateScoreCell(i, roundNum, newScores[i]);
+            });
 
-            // Update State
-            gameState.rounds[editingRoundIdx] = {
-                bets: bets,
-                tricks: tricks,
-                bonus: bonus,
-                scores: scores
-            };
-
-            saveGame();
+            recalculateAllTotals();
+            saveState();
+            
             document.getElementById('edit-modal').style.display = 'none';
-            renderTable();
         }
 
         window.onload = init;
